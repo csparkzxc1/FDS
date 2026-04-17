@@ -52,9 +52,9 @@ export default function TabsLayout() {
   }
 
   return (
-    <ErrorBoundary>
-      <>
-        <TabsInit />
+    <>
+      <TabsInit />
+      <ErrorBoundary>
         <Tabs
         screenOptions={{
           headerShown: false,
@@ -100,7 +100,7 @@ export default function TabsLayout() {
           }}
         />
       </Tabs>
-      </>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </>
   );
 }

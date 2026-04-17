@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import Svg, { Line, Circle, Polygon } from 'react-native-svg';
+import { Colors } from '@/constants/design-tokens';
 
 interface Props {
   leftLabel: string;
@@ -23,10 +24,9 @@ export function SeesawChart({
   rightLabel,
   leftPct,
   rightPct,
-  leftColor = '#6366F1',
-  rightColor = '#EC4899',
+  leftColor = Colors.primary[500],
+  rightColor = Colors.kid[500],
 }: Props) {
-  // tilt angle: positive = left heavier (left side goes down)
   const maxTilt = 18;
   const diff = (leftPct - rightPct) / 100;
   const tiltDeg = diff * maxTilt;
@@ -46,9 +46,7 @@ export function SeesawChart({
   return (
     <View className="items-center">
       <Svg width={W} height={H}>
-        {/* Fulcrum */}
         <Polygon points={triPoints} fill="#D1D5DB" />
-        {/* Beam */}
         <Line
           x1={lx}
           y1={ly}
@@ -58,9 +56,7 @@ export function SeesawChart({
           strokeWidth={6}
           strokeLinecap="round"
         />
-        {/* Left ball */}
         <Circle cx={lx} cy={ly - BALL_R} r={BALL_R} fill={leftColor} opacity={0.9} />
-        {/* Right ball */}
         <Circle cx={rx} cy={ry - BALL_R} r={BALL_R} fill={rightColor} opacity={0.9} />
       </Svg>
       <View className="flex-row justify-between" style={{ width: W - 20 }}>

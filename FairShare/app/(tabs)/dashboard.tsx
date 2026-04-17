@@ -15,14 +15,6 @@ import type { FairnessData } from '@/types';
 
 type Period = 'week' | 'month';
 
-const CATEGORY_LABELS_MAP: Record<string, string> = {
-  cleaning: '청소',
-  cooking: '요리',
-  laundry: '세탁',
-  invisible: '정신노동',
-  care: '돌봄',
-  etc: '기타',
-};
 
 function buildStats(logs: any[], members: any[]) {
   const memberMap: Record<string, FairnessData> = {};
@@ -150,7 +142,7 @@ export default function DashboardScreen() {
                   leftPct={stats.memberStats[0].percentage}
                   rightPct={stats.memberStats[1].percentage}
                   leftColor={Colors.primary[500]}
-                  rightColor="#EC4899"
+                  rightColor={Colors.kid[500]}
                 />
                 <Text className="text-xs text-gray-400 mt-3 text-center">
                   50%에 가까울수록 균형잡혔어요
@@ -184,7 +176,7 @@ export default function DashboardScreen() {
                 data={Object.entries(stats.categoryMap)
                   .sort(([, a], [, b]) => b - a)
                   .map(([cat, pts]) => ({
-                    label: `${CategoryIcons[cat as keyof typeof CategoryIcons] ?? '✨'} ${CATEGORY_LABELS_MAP[cat] ?? cat}`,
+                    label: `${CategoryIcons[cat as keyof typeof CategoryIcons] ?? '✨'} ${CATEGORY_LABELS[cat] ?? cat}`,
                     value: pts,
                     color: CategoryColors[cat as keyof typeof CategoryColors] ?? Colors.gray[300],
                   }))}

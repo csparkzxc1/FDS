@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -38,7 +38,7 @@ export default function HomeScreen() {
   const { data: weeklyPoints = 0 } = useMyWeeklyPoints(household?.householdId, user?.id);
   const { mutateAsync: logChore } = useCreateChoreLog();
 
-  const myMember = members.find((m) => m.user_id === user?.id);
+  const myMember = useMemo(() => members.find((m) => m.user_id === user?.id), [members, user?.id]);
   const isParent = myMember?.role === 'parent';
   const isChild = myMember?.role === 'child';
 

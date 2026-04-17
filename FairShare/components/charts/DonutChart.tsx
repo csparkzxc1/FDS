@@ -23,15 +23,17 @@ export function DonutChart({ data, centerLabel, centerSub }: Props) {
   const total = data.reduce((s, d) => s + d.value, 0);
   if (total === 0) return null;
 
-  let accumulated = 0;
-  const slices = data.map((d) => {
-    const pct = d.value / total;
-    const dash = pct * CIRCUMFERENCE;
-    const gap = CIRCUMFERENCE - dash;
-    const rotation = accumulated * 360 - 90;
-    accumulated += pct;
-    return { ...d, dash, gap, rotation };
-  });
+  const slices = data.reduce<{ items: (DonutSlice & { dash: number; gap: number; rotation: number })[]; acc: number }>(
+    ({ items, acc }, d) => {
+      const pct = d.value / total;
+      const dash = pct * CIRCUMFERENCE;
+      return {
+        items: [...items, { ...d, dash, gap: CIRCUMFERENCE - dash, rotation: acc * 360 - 90 }],
+        acc: acc + pct,
+      };
+    },
+    { items: [], acc: 0 },
+  ).items;
 
   const cx = SIZE / 2;
   const cy = SIZE / 2;
@@ -67,9 +69,9 @@ export function DonutChart({ data, centerLabel, centerSub }: Props) {
           )}
         </View>
       </View>
-      <View className="flex-row flex-wrap justify-center mt-3" style={{ gap: 8 }}>
+      <View className="flex-row flex-wrap justify-center gap-2 mt-3">
         {slices.map((s, i) => (
-          <View key={i} className="flex-row items-center" style={{ marginHorizontal: 4 }}>
+          <View key={i} className="flex-row items-center mx-1">
             <View
               className="rounded-full mr-1"
               style={{ width: 8, height: 8, backgroundColor: s.color }}

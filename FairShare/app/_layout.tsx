@@ -9,8 +9,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useSession } from '@/hooks/useSession';
 import { useAuthStore } from '@/stores/authStore';
+import { initNotificationHandler } from '@/services/notificationService';
 
 SplashScreen.preventAutoHideAsync();
+initNotificationHandler();
 
 const queryClient = new QueryClient({
   defaultOptions: {

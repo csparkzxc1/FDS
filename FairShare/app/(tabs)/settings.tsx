@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -58,6 +59,12 @@ export default function SettingsScreen() {
   const household = useHouseholdStore((s) => s.current);
   const [dailyReminderOn, setDailyReminderOn] = useState(true);
 
+  useEffect(() => {
+    AsyncStorage.getItem('dailyReminderOn').then((v) => {
+      if (v !== null) setDailyReminderOn(v === 'true');
+    });
+  }, []);
+
   const { data: pendingMembers } = usePendingMembers(household?.householdId);
   const pendingCount = pendingMembers?.length ?? 0;
 
@@ -72,6 +79,7 @@ export default function SettingsScreen() {
     } else {
       await cancelDailyReminder();
     }
+    await AsyncStorage.setItem('dailyReminderOn', String(value));
     setDailyReminderOn(value);
   };
 
