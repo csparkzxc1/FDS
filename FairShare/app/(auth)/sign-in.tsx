@@ -6,6 +6,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  TouchableOpacity,
+  StyleSheet,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,7 +16,7 @@ import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Button, Input, Divider } from '@/components/ui';
-import { signInWithEmail, signInWithApple } from '@/hooks/useAuth';
+import { signInWithEmail, signInWithApple, signInWithKakao } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { IS_DEV_BYPASS } from '@/utils/devMode';
 
@@ -24,6 +26,22 @@ const signInSchema = z.object({
 });
 
 type SignInForm = { email: string; password: string };
+
+// Kakao brand colors must stay fixed per Kakao's design guidelines (no dark-mode inversion)
+const styles = StyleSheet.create({
+  kakaoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEE500',
+    borderRadius: 12,
+    height: 52,
+    marginBottom: 12,
+    gap: 8,
+  },
+  kakaoIcon: { fontSize: 20, lineHeight: 24 },
+  kakaoText: { fontSize: 16, fontWeight: '600', color: '#191919' },
+});
 
 export default function SignInScreen() {
   const { t } = useTranslation();
@@ -60,6 +78,22 @@ export default function SignInScreen() {
     } catch (e: any) {
       if (e?.code !== 'ERR_REQUEST_CANCELED') {
         Alert.alert('Apple 로그인 실패', '다시 시도해주세요.');
+      }
+    }
+  };
+
+  const onKakaoSignIn = async () => {
+    try {
+      const result = await signInWithKakao();
+      setUser(result.user);
+      if (!result.user.displayName) {
+        router.replace('/(auth)/complete-profile');
+      } else {
+        router.replace('/');
+      }
+    } catch (e: any) {
+      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('카카오 로그인 실패', '다시 시도해주세요.');
       }
     }
   };
@@ -141,6 +175,11 @@ export default function SignInScreen() {
 
           <Divider label="또는" className="my-6" />
 
+          <TouchableOpacity style={styles.kakaoButton} onPress={onKakaoSignIn} activeOpacity={0.85}>
+            <Text style={styles.kakaoIcon}>💬</Text>
+            <Text style={styles.kakaoText}>카카오로 시작하기</Text>
+          </TouchableOpacity>
+
           {Platform.OS === 'ios' && (
             <Button variant="outline" size="lg" fullWidth className="mb-3" onPress={onAppleSignIn}>
               {t('auth.continueWithApple')}
@@ -148,7 +187,13 @@ export default function SignInScreen() {
           )}
 
           {IS_DEV_BYPASS && (
-            <Button variant="ghost" size="lg" fullWidth className="mb-3 border border-dashed border-warning-400" onPress={onDevBypass}>
+            <Button
+              variant="ghost"
+              size="lg"
+              fullWidth
+              className="mb-3 border border-dashed border-warning-400"
+              onPress={onDevBypass}
+            >
               🛠 개발자 로그인 (DEV)
             </Button>
           )}

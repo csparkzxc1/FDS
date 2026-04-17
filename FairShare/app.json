@@ -18,7 +18,21 @@
       "infoPlist": {
         "NSCameraUsageDescription": "집안일 인증 사진을 촬영하기 위해 카메라 접근이 필요합니다.",
         "NSPhotoLibraryUsageDescription": "집안일 인증 사진을 선택하기 위해 갤러리 접근이 필요합니다.",
-        "NSPhotoLibraryAddUsageDescription": "집안일 인증 사진을 저장하기 위해 접근이 필요합니다."
+        "NSPhotoLibraryAddUsageDescription": "집안일 인증 사진을 저장하기 위해 접근이 필요합니다.",
+        "UIApplicationShortcutItems": [
+          {
+            "UIApplicationShortcutItemTitle": "빠른 체크",
+            "UIApplicationShortcutItemSubtitle": "집안일 빠른 체크",
+            "UIApplicationShortcutItemType": "com.fairshare.app.quickcheck",
+            "UIApplicationShortcutItemIconType": "UIApplicationShortcutIconTypeCompose"
+          },
+          {
+            "UIApplicationShortcutItemTitle": "주간 현황",
+            "UIApplicationShortcutItemSubtitle": "이번 주 공정성 현황",
+            "UIApplicationShortcutItemType": "com.fairshare.app.dashboard",
+            "UIApplicationShortcutItemIconType": "UIApplicationShortcutIconTypeSearch"
+          }
+        ]
       }
     },
     "android": {
@@ -45,6 +59,7 @@
     "scheme": "fairshare",
     "plugins": [
       "expo-router",
+      "./plugins/withAndroidShortcuts",
       "expo-font",
       "expo-apple-authentication",
       [

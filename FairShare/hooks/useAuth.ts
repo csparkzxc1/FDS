@@ -26,6 +26,10 @@ export async function signInWithApple() {
   return authService.signInWithApple();
 }
 
+export async function signInWithKakao() {
+  return authService.signInWithKakao();
+}
+
 export async function signOut() {
   useHouseholdStore.getState().clear();
   useAuthStore.getState().clear();

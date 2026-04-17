@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { IS_DEV_BYPASS, MOCK_USER } from '@/utils/devMode';
 import type { AuthUser } from '@/types';
 
-export type AuthProvider = 'email' | 'apple';
+export type AuthProvider = 'email' | 'apple' | 'kakao';
 
 export interface SignInResult {
   user: AuthUser;
@@ -91,6 +91,62 @@ export async function signInWithApple(): Promise<SignInResult> {
       email: data.user.email ?? '',
       displayName,
       avatarUrl: null,
+    },
+  };
+}
+
+export async function signInWithKakao(): Promise<SignInResult> {
+  if (IS_DEV_BYPASS) {
+    return {
+      user: {
+        id: MOCK_USER.id,
+        email: 'kakao-dev@fairshare.local',
+        displayName: '카카오유저(DEV)',
+        avatarUrl: null,
+      },
+    };
+  }
+
+  // Supabase supports Kakao natively — enable it in Supabase Dashboard > Auth > Providers > Kakao
+  // and set your Kakao REST API key + client secret there.
+  const Linking = await import('expo-linking');
+  const redirectUri = Linking.createURL('auth/callback');
+
+  const { data, error } = await (supabase.auth as any).signInWithOAuth({
+    provider: 'kakao',
+    options: { redirectTo: redirectUri, skipBrowserRedirect: true },
+  });
+  if (error) throw error;
+  if (!data?.url) throw new Error('카카오 로그인 URL을 가져올 수 없습니다');
+
+  const WebBrowser = await import('expo-web-browser');
+  const result = await WebBrowser.openAuthSessionAsync(data.url as string, redirectUri);
+
+  if (result.type !== 'success') {
+    const err = new Error('카카오 로그인이 취소되었습니다');
+    (err as any).code = 'ERR_REQUEST_CANCELED';
+    throw err;
+  }
+
+  const { data: sessionData, error: sessionError } = await (supabase.auth as any).exchangeCodeForSession(result.url);
+  if (sessionError) throw sessionError;
+  if (!sessionData?.user) throw new Error('No user returned');
+
+  const u = sessionData.user as any;
+  const displayName: string | null =
+    u.user_metadata?.full_name ?? u.user_metadata?.name ?? null;
+  const avatarUrl: string | null = u.user_metadata?.avatar_url ?? null;
+
+  if (u.email) {
+    await upsertUserProfile(u.id, u.email, displayName ?? u.email, avatarUrl);
+  }
+
+  return {
+    user: {
+      id: u.id,
+      email: u.email ?? '',
+      displayName,
+      avatarUrl,
     },
   };
 }
