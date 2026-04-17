@@ -86,11 +86,11 @@ function withShortcutsManifest(config) {
     if (!mainActivity) return c;
 
     mainActivity['meta-data'] = mainActivity['meta-data'] ?? [];
-    const already = (mainActivity['meta-data'] as any[]).some(
+    const already = mainActivity['meta-data'].some(
       (m) => m.$?.['android:name'] === 'android.app.shortcuts',
     );
     if (!already) {
-      (mainActivity['meta-data'] as any[]).push({
+      mainActivity['meta-data'].push({
         $: {
           'android:name': 'android.app.shortcuts',
           'android:resource': '@xml/shortcuts',
