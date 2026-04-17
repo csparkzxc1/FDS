@@ -1,22 +1,26 @@
 import { Redirect } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { useHousehold } from '@/hooks/useHousehold';
+import { useMyHousehold } from '@/hooks/queries/useHousehold';
 import { LoadingSpinner } from '@/components/ui';
 
 export default function Index() {
-  const { isAuthenticated, isInitialized } = useAuth();
-  const { data: household, isLoading: householdLoading } = useHousehold();
+  const { user, isLoading: authLoading } = useAuth();
+  const { data: householdData, isLoading: householdLoading } = useMyHousehold(user?.id);
 
-  if (!isInitialized || householdLoading) {
+  if (authLoading || (user && householdLoading)) {
     return <LoadingSpinner fullScreen />;
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
-  if (!household) {
+  if (!householdData) {
     return <Redirect href="/(onboarding)/welcome" />;
+  }
+
+  if (householdData.memberStatus === 'pending') {
+    return <Redirect href="/(onboarding)/pending-approval" />;
   }
 
   return <Redirect href="/(tabs)/home" />;

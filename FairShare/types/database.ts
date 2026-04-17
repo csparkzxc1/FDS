@@ -8,6 +8,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type HouseholdMode = 'couple' | 'family' | 'roommate';
 export type MemberRole = 'parent' | 'child' | 'partner' | 'roommate';
+export type MemberStatus = 'pending' | 'active';
 export type ChoreCategory = 'cleaning' | 'cooking' | 'laundry' | 'invisible' | 'care' | 'etc';
 export type ChoreLogStatus = 'pending' | 'approved' | 'rejected';
 
@@ -74,7 +75,8 @@ export interface Database {
           id: string;
           household_id: string;
           user_id: string;
-          role: MemberRole;
+          role: MemberRole | null;
+          status: MemberStatus;
           nickname: string | null;
           birth_year: number | null;
           joined_at: string;
@@ -83,7 +85,8 @@ export interface Database {
           id?: string;
           household_id: string;
           user_id: string;
-          role: MemberRole;
+          role?: MemberRole | null;
+          status?: MemberStatus;
           nickname?: string | null;
           birth_year?: number | null;
           joined_at?: string;
@@ -92,7 +95,8 @@ export interface Database {
           id?: string;
           household_id?: string;
           user_id?: string;
-          role?: MemberRole;
+          role?: MemberRole | null;
+          status?: MemberStatus;
           nickname?: string | null;
           birth_year?: number | null;
           joined_at?: string;

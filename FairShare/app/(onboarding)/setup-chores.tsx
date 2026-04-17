@@ -5,15 +5,16 @@ import {
   SectionList,
   TouchableOpacity,
   Alert,
+  TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui';
 import { CHORE_PRESETS, CATEGORY_LABELS, type ChorePreset, type ChoreCategory } from '@/constants/chore-presets';
 import { useHouseholdStore } from '@/stores/householdStore';
-import { supabase } from '@/services/supabase';
+import { useCreateChores } from '@/hooks/queries/useChores';
 import { Colors } from '@/constants/design-tokens';
+import type { CreateChoreInput } from '@/services/choreService';
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ChoreCategory[];
 
@@ -27,35 +28,16 @@ function getSections(mode: 'couple' | 'family' | 'roommate') {
 
 export default function SetupChoresScreen() {
   const household = useHouseholdStore((s) => s.current);
-  const queryClient = useQueryClient();
   const mode = household?.mode ?? 'couple';
   const sections = getSections(mode);
 
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(CHORE_PRESETS.filter((p) => p.modes.includes(mode)).map((p) => p.title))
+    () => new Set(CHORE_PRESETS.filter((p) => p.modes.includes(mode)).map((p) => p.title)),
   );
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickTitle, setQuickTitle] = useState('');
 
-  const { mutateAsync: seedChores, isPending } = useMutation({
-    mutationFn: async (presets: ChorePreset[]) => {
-      if (!household?.householdId) throw new Error('No household');
-      const rows = presets.map((p) => ({
-        household_id: household.householdId,
-        title: p.title,
-        icon: p.icon,
-        category: p.category,
-        points: p.points,
-        requires_photo: p.requiresPhoto,
-        requires_approval: p.requiresApproval,
-        is_invisible_labor: p.isInvisibleLabor,
-        estimated_minutes: p.estimatedMinutes,
-      }));
-      const { error } = await (supabase.from('chores') as any).insert(rows);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chores'] });
-    },
-  });
+  const { mutateAsync: createChores, isPending } = useCreateChores();
 
   const toggle = (title: string) => {
     setSelected((prev) => {
@@ -66,9 +48,33 @@ export default function SetupChoresScreen() {
   };
 
   const handleAdd = async () => {
-    const toAdd = CHORE_PRESETS.filter((p) => selected.has(p.title));
+    if (!household?.householdId) return;
+
+    const presets = CHORE_PRESETS.filter((p) => selected.has(p.title));
+    const toCreate: CreateChoreInput[] = presets.map((p) => ({
+      householdId: household.householdId,
+      title: p.title,
+      icon: p.icon,
+      category: p.category,
+      points: p.points,
+      requiresPhoto: p.requiresPhoto,
+      requiresApproval: p.requiresApproval,
+      isInvisibleLabor: p.isInvisibleLabor,
+      estimatedMinutes: p.estimatedMinutes,
+    }));
+
+    if (quickTitle.trim()) {
+      toCreate.push({
+        householdId: household.householdId,
+        title: quickTitle.trim(),
+        icon: '✨',
+        category: 'etc',
+        points: 3,
+      });
+    }
+
     try {
-      await seedChores(toAdd);
+      if (toCreate.length > 0) await createChores(toCreate);
       router.replace('/(tabs)/home');
     } catch {
       Alert.alert('오류', '집안일 추가에 실패했습니다');
@@ -80,24 +86,43 @@ export default function SetupChoresScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
       <View className="px-6 pt-6 pb-4 border-b border-gray-100">
         <Text className="text-2xl font-bold text-gray-900 mb-1">집안일 선택</Text>
         <Text className="text-gray-500 text-sm">나중에 언제든지 추가하거나 수정할 수 있어요</Text>
-        <TouchableOpacity
-          onPress={() =>
-            setSelected(
-              isAllSelected
-                ? new Set()
-                : new Set(sections.flatMap((s) => s.data.map((d) => d.title)))
-            )
-          }
-          className="mt-3"
-        >
-          <Text className="text-primary-500 font-medium">
-            {isAllSelected ? '전체 해제' : '전체 선택'}
-          </Text>
-        </TouchableOpacity>
+        <View className="flex-row items-center justify-between mt-3">
+          <TouchableOpacity
+            onPress={() =>
+              setSelected(
+                isAllSelected
+                  ? new Set()
+                  : new Set(sections.flatMap((s) => s.data.map((d) => d.title))),
+              )
+            }
+          >
+            <Text className="text-primary-500 font-medium">
+              {isAllSelected ? '전체 해제' : '전체 선택'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowQuickAdd((v) => !v)}>
+            <Text className="text-primary-500 font-medium">+ 직접 추가</Text>
+          </TouchableOpacity>
+        </View>
+
+        {showQuickAdd && (
+          <View className="mt-3 flex-row items-center gap-2">
+            <TextInput
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-gray-900"
+              placeholder="집안일 이름 입력"
+              value={quickTitle}
+              onChangeText={setQuickTitle}
+              maxLength={30}
+              autoFocus
+            />
+            <TouchableOpacity onPress={() => { setShowQuickAdd(false); setQuickTitle(''); }}>
+              <Text className="text-gray-400 px-2">✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       <SectionList
@@ -141,16 +166,9 @@ export default function SetupChoresScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
       />
 
-      {/* Bottom CTA */}
       <View className="absolute bottom-0 left-0 right-0 px-6 pb-8 pt-4 bg-white border-t border-gray-100">
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          loading={isPending}
-          onPress={handleAdd}
-        >
-          {selected.size}개 추가하기
+        <Button variant="primary" size="lg" fullWidth loading={isPending} onPress={handleAdd}>
+          {selected.size + (quickTitle.trim() ? 1 : 0)}개 추가하기
         </Button>
         <Button
           variant="ghost"

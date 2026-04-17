@@ -5,16 +5,17 @@ export * from './database';
 export interface AuthUser {
   id: string;
   email: string | null;
-  displayName: string;
+  displayName: string | null;
   avatarUrl: string | null;
 }
 
 export interface HouseholdContext {
   householdId: string;
-  householdName: string;
+  name: string;
   mode: import('./database').HouseholdMode;
-  role: import('./database').MemberRole;
+  inviteCode: string;
   pointToCurrency: number;
+  memberStatus: 'pending' | 'active';
 }
 
 // ── API Result Pattern ──────────────────────────────────────

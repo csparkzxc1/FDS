@@ -10,39 +10,62 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Button, Input, Divider } from '@/components/ui';
-import { signInWithEmail } from '@/hooks/useAuth';
+import { signInWithEmail, signInWithApple } from '@/hooks/useAuth';
+import { useAuthStore } from '@/stores/authStore';
+import { IS_DEV_BYPASS } from '@/utils/devMode';
 
 const signInSchema = z.object({
   email: z.string().email('올바른 이메일 주소를 입력해주세요'),
   password: z.string().min(8, '비밀번호는 최소 8자 이상이어야 합니다'),
 });
 
-type SignInForm = z.infer<typeof signInSchema>;
+type SignInForm = { email: string; password: string };
 
 export default function SignInScreen() {
   const { t } = useTranslation();
+  const setUser = useAuthStore((s) => s.setUser);
+
   const {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<SignInForm>({
-    resolver: zodResolver(signInSchema),
+    resolver: zodResolver(signInSchema) as any,
     defaultValues: { email: '', password: '' },
   });
 
   const onSubmit = async (data: SignInForm) => {
     try {
-      await signInWithEmail(data.email, data.password);
-    } catch (error) {
-      Alert.alert(
-        '로그인 실패',
-        '이메일 또는 비밀번호를 확인해주세요.'
-      );
+      const result = await signInWithEmail(data.email, data.password);
+      setUser(result.user);
+      router.replace('/');
+    } catch {
+      Alert.alert('로그인 실패', '이메일 또는 비밀번호를 확인해주세요.');
     }
+  };
+
+  const onAppleSignIn = async () => {
+    try {
+      const result = await signInWithApple();
+      setUser(result.user);
+      if (!result.user.displayName) {
+        router.replace('/(auth)/complete-profile');
+      } else {
+        router.replace('/');
+      }
+    } catch (e: any) {
+      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Apple 로그인 실패', '다시 시도해주세요.');
+      }
+    }
+  };
+
+  const onDevBypass = () => {
+    router.replace('/');
   };
 
   return (
@@ -56,14 +79,12 @@ export default function SignInScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingTop: 60, paddingBottom: 40 }}
         >
-          {/* Header */}
           <View className="mb-10">
             <Text className="text-4xl mb-2">🏠</Text>
             <Text className="text-3xl font-bold text-gray-900 mb-2">FairShare</Text>
             <Text className="text-gray-500">공정한 집안일 분담</Text>
           </View>
 
-          {/* Form */}
           <View className="mb-6">
             <Controller
               control={control}
@@ -120,13 +141,15 @@ export default function SignInScreen() {
 
           <Divider label="또는" className="my-6" />
 
-          {/* Social Sign In – placeholders for Phase 2 */}
-          <Button variant="outline" size="lg" fullWidth className="mb-3">
-            {t('auth.continueWithKakao')}
-          </Button>
           {Platform.OS === 'ios' && (
-            <Button variant="outline" size="lg" fullWidth>
+            <Button variant="outline" size="lg" fullWidth className="mb-3" onPress={onAppleSignIn}>
               {t('auth.continueWithApple')}
+            </Button>
+          )}
+
+          {IS_DEV_BYPASS && (
+            <Button variant="ghost" size="lg" fullWidth className="mb-3 border border-dashed border-warning-400" onPress={onDevBypass}>
+              🛠 개발자 로그인 (DEV)
             </Button>
           )}
 

@@ -123,8 +123,8 @@ export default function HomeScreen() {
   const { data: weeklyPoints = 0 } = useMyWeeklyPoints(user?.id, household?.householdId);
   const { mutateAsync: checkChore } = useCheckChore(household?.householdId);
 
-  const role = household?.role;
-  const isParent = role === 'parent';
+  const myMember = members.find((m) => m.user_id === user?.id);
+  const isParent = myMember?.role === 'parent';
 
   const handleChorePress = async (chore: ChoreRow) => {
     const needsPhoto = chore.requires_photo;

@@ -14,12 +14,17 @@ import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Input } from '@/components/ui';
 import { signUpWithEmail } from '@/hooks/useAuth';
+import { useAuthStore } from '@/stores/authStore';
 
 const signUpSchema = z
   .object({
     displayName: z.string().min(1, '이름을 입력해주세요').max(20, '이름은 최대 20자입니다'),
     email: z.string().email('올바른 이메일 주소를 입력해주세요'),
-    password: z.string().min(8, '비밀번호는 최소 8자 이상이어야 합니다'),
+    password: z
+      .string()
+      .min(8, '비밀번호는 최소 8자 이상이어야 합니다')
+      .regex(/[a-zA-Z]/, '영문자를 포함해야 합니다')
+      .regex(/[0-9]/, '숫자를 포함해야 합니다'),
     passwordConfirm: z.string(),
   })
   .refine((d) => d.password === d.passwordConfirm, {
@@ -27,26 +32,36 @@ const signUpSchema = z
     path: ['passwordConfirm'],
   });
 
-type SignUpForm = z.infer<typeof signUpSchema>;
+type SignUpForm = {
+  displayName: string;
+  email: string;
+  password: string;
+  passwordConfirm: string;
+};
 
 export default function SignUpScreen() {
+  const setUser = useAuthStore((s) => s.setUser);
+
   const {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<SignUpForm>({
-    resolver: zodResolver(signUpSchema),
+    resolver: zodResolver(signUpSchema) as any,
     defaultValues: { displayName: '', email: '', password: '', passwordConfirm: '' },
   });
 
   const onSubmit = async (data: SignUpForm) => {
     try {
-      await signUpWithEmail(data.email, data.password, data.displayName);
-      Alert.alert('회원가입 완료', '이메일 인증 후 로그인해주세요.', [
-        { text: '확인', onPress: () => router.replace('/(auth)/sign-in') },
-      ]);
-    } catch (error) {
-      Alert.alert('회원가입 실패', '다시 시도해주세요.');
+      const result = await signUpWithEmail(data.email, data.password, data.displayName);
+      setUser(result.user);
+      router.replace('/');
+    } catch (error: any) {
+      const msg =
+        error?.message?.includes('already registered')
+          ? '이미 사용중인 이메일입니다.'
+          : '회원가입에 실패했습니다. 다시 시도해주세요.';
+      Alert.alert('회원가입 실패', msg);
     }
   };
 
@@ -106,7 +121,7 @@ export default function SignUpScreen() {
             render={({ field: { onChange, onBlur, value } }) => (
               <Input
                 label="비밀번호"
-                placeholder="8자 이상 입력하세요"
+                placeholder="영문+숫자 포함 8자 이상"
                 secureTextEntry
                 value={value}
                 onChangeText={onChange}

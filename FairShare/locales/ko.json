@@ -40,13 +40,22 @@
     "emailPlaceholder": "이메일 주소를 입력하세요",
     "passwordPlaceholder": "비밀번호를 입력하세요",
     "namePlaceholder": "이름을 입력하세요",
+    "continueWithAppleShort": "Apple 로그인",
+    "devLogin": "개발자 로그인 (DEV)",
+    "completeProfile": "프로필 완성",
+    "completeProfileDesc": "앱에서 사용할 이름을 알려주세요",
     "errors": {
       "invalidEmail": "올바른 이메일 주소를 입력해주세요",
       "passwordTooShort": "비밀번호는 최소 8자 이상이어야 합니다",
+      "passwordNoAlpha": "영문자를 포함해야 합니다",
+      "passwordNoDigit": "숫자를 포함해야 합니다",
       "passwordMismatch": "비밀번호가 일치하지 않습니다",
       "nameRequired": "이름을 입력해주세요",
       "signInFailed": "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요",
-      "signUpFailed": "회원가입에 실패했습니다. 다시 시도해주세요"
+      "signUpFailed": "회원가입에 실패했습니다. 다시 시도해주세요",
+      "emailAlreadyUsed": "이미 사용 중인 이메일입니다",
+      "appleCanceled": "Apple 로그인이 취소되었습니다",
+      "profileSaveFailed": "프로필 저장에 실패했습니다"
     }
   },
   "onboarding": {
@@ -99,6 +108,23 @@
       "copied": "복사됨!",
       "refresh": "코드 갱신",
       "goToHome": "홈으로 가기"
+    },
+    "joinHousehold": {
+      "title": "초대 코드 입력",
+      "subtitle": "가족 또는 파트너에게 받은 6자리 코드를 입력하세요",
+      "codePlaceholder": "예: ABC123",
+      "codeLabel": "초대 코드",
+      "householdFound": "가구 확인됨",
+      "invalidCode": "유효하지 않거나 만료된 코드입니다",
+      "joinButton": "참여 요청하기",
+      "joinFailed": "참여에 실패했습니다. 다시 시도해주세요"
+    },
+    "pendingApproval": {
+      "title": "승인을 기다리고 있어요",
+      "subtitle": "가구 관리자가 참여 요청을 확인하는 중이에요.\n승인되면 자동으로 이동됩니다.",
+      "notification": "앱을 닫아도 알림으로 알려드려요",
+      "cancel": "취소하고 로그아웃",
+      "devApprove": "DEV: 승인됨으로 이동"
     }
   },
   "home": {
@@ -208,9 +234,19 @@
     "householdMode": "가구 모드",
     "pointRate": "포인트 환율",
     "inviteCode": "초대 코드",
-    "members": "구성원",
+    "members": "구성원 관리",
+    "pendingMembers": "승인 대기중 {{count}}명",
+    "approveMember": "승인",
+    "rejectMember": "거절",
+    "assignRole": "역할 지정",
     "removeMember": "구성원 삭제",
     "leaveHousehold": "가구에서 나가기",
+    "roles": {
+      "parent": "부모",
+      "child": "자녀",
+      "partner": "파트너",
+      "roommate": "룸메이트"
+    },
     "notifications": {
       "dailyReminder": "데일리 리마인더",
       "dailyReminderTime": "알림 시간",

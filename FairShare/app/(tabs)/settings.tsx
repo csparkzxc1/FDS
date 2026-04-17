@@ -9,12 +9,13 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import { useHouseholdStore } from '@/stores/householdStore';
 import { supabase } from '@/services/supabase';
-import { Avatar, Card, Divider, LoadingSpinner } from '@/components/ui';
+import { Avatar, Card, Divider } from '@/components/ui';
 import { signOut } from '@/hooks/useAuth';
+import { usePendingMembers } from '@/hooks/queries/useHousehold';
 import { Colors } from '@/constants/design-tokens';
 
 function SettingsRow({
@@ -22,13 +23,13 @@ function SettingsRow({
   label,
   value,
   onPress,
-  showArrow = true,
+  badge,
 }: {
   icon: string;
   label: string;
   value?: string;
   onPress?: () => void;
-  showArrow?: boolean;
+  badge?: number;
 }) {
   return (
     <TouchableOpacity
@@ -39,7 +40,12 @@ function SettingsRow({
       <Text className="text-xl mr-3">{icon}</Text>
       <Text className="flex-1 text-base text-gray-800">{label}</Text>
       {value && <Text className="text-gray-400 text-sm mr-2">{value}</Text>}
-      {showArrow && onPress && <Text className="text-gray-300">›</Text>}
+      {badge != null && badge > 0 && (
+        <View className="w-5 h-5 rounded-full bg-danger-500 items-center justify-center mr-2">
+          <Text className="text-white text-xs font-bold">{badge}</Text>
+        </View>
+      )}
+      {onPress && <Text className="text-gray-300">›</Text>}
     </TouchableOpacity>
   );
 }
@@ -48,12 +54,14 @@ export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const household = useHouseholdStore((s) => s.current);
 
+  const { data: pendingMembers } = usePendingMembers(household?.householdId);
+  const pendingCount = pendingMembers?.length ?? 0;
+
   const { data: notifSettings } = useQuery({
     queryKey: ['notifSettings', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data } = await (supabase
-        .from('notification_settings') as any)
+      const { data } = await (supabase.from('notification_settings') as any)
         .select('*')
         .eq('user_id', user.id)
         .single();
@@ -86,13 +94,6 @@ export default function SettingsScreen() {
     roommate: '룸메이트',
   };
 
-  const roleLabels: Record<string, string> = {
-    parent: '부모',
-    child: '자녀',
-    partner: '파트너',
-    roommate: '룸메이트',
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-surface-secondary">
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
@@ -100,7 +101,6 @@ export default function SettingsScreen() {
           <Text className="text-2xl font-bold text-gray-900">설정</Text>
         </View>
 
-        {/* Profile */}
         <Card variant="default" padding="md" className="mx-5 mb-4">
           <View className="flex-row items-center">
             <Avatar
@@ -109,11 +109,11 @@ export default function SettingsScreen() {
               size="lg"
             />
             <View className="ml-4 flex-1">
-              <Text className="text-lg font-bold text-gray-900">{user?.displayName}</Text>
+              <Text className="text-lg font-bold text-gray-900">{user?.displayName ?? '사용자'}</Text>
               <Text className="text-sm text-gray-500">{user?.email}</Text>
               {household && (
                 <Text className="text-xs text-primary-500 mt-0.5">
-                  {household.householdName} · {roleLabels[household.role] ?? household.role}
+                  {household.name} · {modeLabels[household.mode] ?? household.mode}
                 </Text>
               )}
             </View>
@@ -123,7 +123,6 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
-        {/* Household */}
         {household && (
           <Card variant="default" padding="none" className="mx-5 mb-4">
             <View className="px-4 py-3 border-b border-gray-50">
@@ -132,7 +131,7 @@ export default function SettingsScreen() {
             <SettingsRow
               icon="🏠"
               label="가구 이름"
-              value={household.householdName}
+              value={household.name}
               onPress={() => {}}
             />
             <Divider />
@@ -156,18 +155,19 @@ export default function SettingsScreen() {
             <SettingsRow
               icon="🔗"
               label="초대 코드"
+              value={household.inviteCode}
               onPress={() => {}}
             />
             <Divider />
             <SettingsRow
               icon="👤"
               label="구성원 관리"
-              onPress={() => {}}
+              badge={pendingCount}
+              onPress={() => router.push('/modals/member-approval')}
             />
           </Card>
         )}
 
-        {/* Chores catalog */}
         <Card variant="default" padding="none" className="mx-5 mb-4">
           <View className="px-4 py-3 border-b border-gray-50">
             <Text className="text-sm font-semibold text-gray-500">집안일</Text>
@@ -179,7 +179,6 @@ export default function SettingsScreen() {
           />
         </Card>
 
-        {/* Notifications */}
         <Card variant="default" padding="none" className="mx-5 mb-4">
           <View className="px-4 py-3 border-b border-gray-50">
             <Text className="text-sm font-semibold text-gray-500">알림</Text>
@@ -205,12 +204,8 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
-        {/* Sign out */}
         <Card variant="default" padding="none" className="mx-5 mb-4">
-          <TouchableOpacity
-            onPress={handleSignOut}
-            className="flex-row items-center px-4 py-3"
-          >
+          <TouchableOpacity onPress={handleSignOut} className="flex-row items-center px-4 py-3">
             <Text className="text-xl mr-3">🚪</Text>
             <Text className="flex-1 text-base text-danger-500 font-medium">로그아웃</Text>
           </TouchableOpacity>

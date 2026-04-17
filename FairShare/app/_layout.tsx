@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useAuthListener } from '@/hooks/useAuth';
+import { useSession } from '@/hooks/useSession';
 import { useAuthStore } from '@/stores/authStore';
 
 SplashScreen.preventAutoHideAsync();
@@ -26,16 +26,17 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutInner() {
-  useAuthListener();
+  useSession();
+  const isLoading = useAuthStore((s) => s.isLoading);
   const isInitialized = useAuthStore((s) => s.isInitialized);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (!isLoading) {
       SplashScreen.hideAsync();
     }
-  }, [isInitialized]);
+  }, [isLoading]);
 
-  if (!isInitialized) return null;
+  if (isLoading && !isInitialized) return null;
 
   return (
     <>

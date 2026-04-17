@@ -7,6 +7,8 @@ interface HouseholdState {
   members: HouseholdMemberWithUser[];
   pendingApprovalCount: number;
 
+  setHousehold: (household: HouseholdContext | null) => void;
+  /** @deprecated use setHousehold */
   setCurrent: (household: HouseholdContext | null) => void;
   setMembers: (members: HouseholdMemberWithUser[]) => void;
   setPendingApprovalCount: (count: number) => void;
@@ -18,6 +20,7 @@ export const useHouseholdStore = create<HouseholdState>((set) => ({
   members: [],
   pendingApprovalCount: 0,
 
+  setHousehold: (current) => set({ current }),
   setCurrent: (current) => set({ current }),
   setMembers: (members) => set({ members }),
   setPendingApprovalCount: (pendingApprovalCount) => set({ pendingApprovalCount }),
