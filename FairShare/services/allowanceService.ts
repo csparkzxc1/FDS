@@ -1,6 +1,5 @@
 import { supabase } from './supabase';
-import { IS_DEV_BYPASS, MOCK_USER, MOCK_HOUSEHOLD } from '@/utils/devMode';
-import { getWeekRange } from '@/utils/date';
+import { IS_DEV_BYPASS } from '@/utils/devMode';
 
 export interface Settlement {
   id: string;
@@ -10,26 +9,38 @@ export interface Settlement {
   period_end: string;
   total_points: number;
   total_amount: number;
+  carryover: boolean;
   paid_at: string | null;
   paid_by: string | null;
   note: string | null;
   created_at: string;
 }
 
-export async function getChildWeeklyPoints(
+// Returns points earned since the most recent settlement (or all time if none).
+// This is the correct basis for settlement: no double-counting across periods.
+export async function getUnsettledPoints(
   householdId: string,
   childId: string,
 ): Promise<number> {
   if (IS_DEV_BYPASS) return 42;
 
-  const { start, end } = getWeekRange();
+  // Find the last settlement timestamp for this child
+  const { data: last } = await (supabase.from('allowance_settlements') as any)
+    .select('created_at')
+    .eq('household_id', householdId)
+    .eq('child_id', childId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const since: string = last?.created_at ?? new Date(0).toISOString();
+
   const { data } = await (supabase.from('chore_logs') as any)
     .select('points_awarded')
     .eq('household_id', householdId)
     .eq('performed_by', childId)
     .eq('status', 'approved')
-    .gte('performed_at', start.toISOString())
-    .lte('performed_at', end.toISOString());
+    .gt('performed_at', since);
 
   return ((data ?? []) as any[]).reduce((sum: number, r: any) => sum + r.points_awarded, 0);
 }
@@ -38,22 +49,24 @@ export async function settleAllowance(
   householdId: string,
   childId: string,
   paidBy: string,
-  weeklyPoints: number,
+  totalPoints: number,
   totalAmount: number,
+  carryover: boolean,
 ): Promise<void> {
   if (IS_DEV_BYPASS) return;
 
-  const { start, end } = getWeekRange();
-
+  const now = new Date();
   const { error } = await (supabase.from('allowance_settlements') as any).insert({
     household_id: householdId,
     child_id: childId,
-    period_start: start.toISOString().slice(0, 10),
-    period_end: end.toISOString().slice(0, 10),
-    total_points: weeklyPoints,
+    period_start: now.toISOString().slice(0, 10),
+    period_end: now.toISOString().slice(0, 10),
+    total_points: totalPoints,
     total_amount: totalAmount,
-    paid_at: new Date().toISOString(),
+    paid_at: now.toISOString(),
     paid_by: paidBy,
+    carryover,
+    note: carryover ? '포인트 이월' : '포인트 초기화',
   });
 
   if (error) throw error;

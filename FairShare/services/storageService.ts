@@ -13,18 +13,14 @@ export async function uploadChorePhoto(
   const fileName = generatePhotoFileName(userId);
   const path = `${householdId}/${userId}/${fileName}`;
 
+  // Fetch → Blob is safe in React Native (Hermes). Avoids FileReader which
+  // has unreliable ArrayBuffer support in the RN runtime.
   const response = await fetch(compressed);
   const blob = await response.blob();
-  const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as ArrayBuffer);
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(blob);
-  });
 
   const { error } = await supabase.storage
     .from('chore-photos')
-    .upload(path, arrayBuffer, { contentType: 'image/jpeg', upsert: false });
+    .upload(path, blob, { contentType: 'image/jpeg', upsert: false });
 
   if (error) throw error;
 

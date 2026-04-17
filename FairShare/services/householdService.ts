@@ -48,13 +48,14 @@ export async function createHousehold(input: CreateHouseholdInput): Promise<Hous
   if (error) throw error;
   const household = data as HouseholdRow;
 
-  // Creator joins as parent with active status
-  await (supabase.from('household_members') as any).insert({
+  const { error: memberError } = await (supabase.from('household_members') as any).insert({
     household_id: household.id,
     user_id: input.createdBy,
     role: 'parent',
     status: 'active',
   });
+
+  if (memberError) throw memberError;
 
   return household;
 }

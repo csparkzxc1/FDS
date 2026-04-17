@@ -62,6 +62,7 @@ export async function getChoreById(choreId: string): Promise<ChoreRow | null> {
   const { data, error } = await (supabase.from('chores') as any)
     .select('*')
     .eq('id', choreId)
+    .is('archived_at', null)
     .single();
 
   if (error) throw error;

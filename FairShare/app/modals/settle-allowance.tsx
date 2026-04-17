@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useHouseholdStore } from '@/stores/householdStore';
 import { Avatar, Button, Card, LoadingSpinner } from '@/components/ui';
 import { formatDate, getWeekRange } from '@/utils/date';
-import { getChildWeeklyPoints, settleAllowance } from '@/services/allowanceService';
+import { getUnsettledPoints, settleAllowance } from '@/services/allowanceService';
 import { IS_DEV_BYPASS, MOCK_PARTNER } from '@/utils/devMode';
 import { Colors } from '@/constants/design-tokens';
 
@@ -24,13 +24,13 @@ export default function SettleAllowanceModal() {
     ? { user: MOCK_PARTNER }
     : members.find((m) => m.user_id === childId);
 
-  const { data: weeklyPoints = 0, isLoading } = useQuery({
-    queryKey: ['childWeeklyPoints', childId, household?.householdId],
-    queryFn: () => getChildWeeklyPoints(household!.householdId, childId!),
+  const { data: unsettledPoints = 0, isLoading } = useQuery({
+    queryKey: ['unsettledPoints', childId, household?.householdId],
+    queryFn: () => getUnsettledPoints(household!.householdId, childId!),
     enabled: !!childId && !!household?.householdId,
   });
 
-  const totalAmount = weeklyPoints * (household?.pointToCurrency ?? 100);
+  const totalAmount = unsettledPoints * (household?.pointToCurrency ?? 100);
 
   const { mutateAsync: settle, isPending } = useMutation({
     mutationFn: () =>
@@ -38,8 +38,9 @@ export default function SettleAllowanceModal() {
         household!.householdId,
         childId!,
         user!.id,
-        weeklyPoints,
+        unsettledPoints,
         totalAmount,
+        carryover,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settlements'] });
@@ -89,7 +90,7 @@ export default function SettleAllowanceModal() {
         <Card variant="elevated" className="mb-5">
           <View className="flex-row items-center justify-between py-3 border-b border-gray-50">
             <Text className="text-gray-600">획득 포인트</Text>
-            <Text className="text-2xl font-bold text-primary-500">{weeklyPoints}pt</Text>
+            <Text className="text-2xl font-bold text-primary-500">{unsettledPoints}pt</Text>
           </View>
           <View className="flex-row items-center justify-between py-3 border-b border-gray-50">
             <Text className="text-gray-600">환율</Text>
