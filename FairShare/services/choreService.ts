@@ -56,6 +56,18 @@ export async function getChores(householdId: string): Promise<ChoreRow[]> {
   return (data ?? []) as ChoreRow[];
 }
 
+export async function getChoreById(choreId: string): Promise<ChoreRow | null> {
+  if (IS_DEV_BYPASS) return (MOCK_CHORES.find((c) => c.id === choreId) as ChoreRow) ?? null;
+
+  const { data, error } = await (supabase.from('chores') as any)
+    .select('*')
+    .eq('id', choreId)
+    .single();
+
+  if (error) throw error;
+  return data as ChoreRow;
+}
+
 export async function createChores(chores: CreateChoreInput[]): Promise<ChoreRow[]> {
   if (IS_DEV_BYPASS) return [];
 
