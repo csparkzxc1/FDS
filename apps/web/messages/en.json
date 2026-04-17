@@ -23,5 +23,27 @@
     "email": "Email",
     "password": "Password",
     "name": "Name"
+  },
+  "org": {
+    "create": "Create organization",
+    "name": "Name",
+    "type": "Type",
+    "typeCompany": "Company",
+    "typeAcademy": "Academy",
+    "typeSchool": "School",
+    "empty": "No organizations yet — create one to get started."
+  },
+  "location": {
+    "name": "Name",
+    "radius": "Radius (m)",
+    "add": "Add location"
+  },
+  "invite": {
+    "email": "Email to invite",
+    "send": "Send invite",
+    "shareLink": "Accept URL (temporary — Phase 1 will send via email/SMS)"
+  },
+  "attendance": {
+    "empty": "No records yet."
   }
 }

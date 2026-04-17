@@ -23,5 +23,27 @@
     "email": "이메일",
     "password": "비밀번호",
     "name": "이름"
+  },
+  "org": {
+    "create": "조직 생성",
+    "name": "조직 이름",
+    "type": "조직 타입",
+    "typeCompany": "회사",
+    "typeAcademy": "학원",
+    "typeSchool": "학교",
+    "empty": "아직 조직이 없습니다. 생성해 보세요."
+  },
+  "location": {
+    "name": "이름",
+    "radius": "반경(m)",
+    "add": "거점 추가"
+  },
+  "invite": {
+    "email": "초대할 이메일",
+    "send": "초대 발송",
+    "shareLink": "초대 수락 URL (임시 — Phase 1에서 메일/SMS로 자동 발송)"
+  },
+  "attendance": {
+    "empty": "아직 기록이 없습니다."
   }
 }

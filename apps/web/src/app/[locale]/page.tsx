@@ -18,12 +18,20 @@ export default function LandingPage({
         {t('landing.heading')}
       </h1>
       <p className="mb-8 text-lg text-neutral-600">{t('landing.subheading')}</p>
-      <a
-        href="/ko/signin"
-        className="rounded-lg bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700"
-      >
-        {t('landing.cta')}
-      </a>
+      <div className="flex gap-3">
+        <a
+          href="./signin"
+          className="rounded-lg bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-700"
+        >
+          {t('landing.cta')}
+        </a>
+        <a
+          href="./signup"
+          className="rounded-lg border border-neutral-300 px-5 py-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-100"
+        >
+          {t('auth.signUp')}
+        </a>
+      </div>
     </main>
   );
 }
