@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,17 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import { useHouseholdStore } from '@/stores/householdStore';
-import { supabase } from '@/services/supabase';
 import { Avatar, Card, Divider } from '@/components/ui';
 import { signOut } from '@/hooks/useAuth';
 import { usePendingMembers } from '@/hooks/queries/useHousehold';
 import { Colors } from '@/constants/design-tokens';
+import {
+  requestNotificationPermissions,
+  scheduleDailyReminder,
+  cancelDailyReminder,
+} from '@/services/notificationService';
 
 function SettingsRow({
   icon,
@@ -53,22 +56,24 @@ function SettingsRow({
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const household = useHouseholdStore((s) => s.current);
+  const [dailyReminderOn, setDailyReminderOn] = useState(true);
 
   const { data: pendingMembers } = usePendingMembers(household?.householdId);
   const pendingCount = pendingMembers?.length ?? 0;
 
-  const { data: notifSettings } = useQuery({
-    queryKey: ['notifSettings', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await (supabase.from('notification_settings') as any)
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      return data as any;
-    },
-    enabled: !!user?.id,
-  });
+  const handleDailyReminderToggle = async (value: boolean) => {
+    if (value) {
+      const granted = await requestNotificationPermissions();
+      if (!granted) {
+        Alert.alert('알림 권한', '설정에서 알림 권한을 허용해주세요');
+        return;
+      }
+      await scheduleDailyReminder(20, 0);
+    } else {
+      await cancelDailyReminder();
+    }
+    setDailyReminderOn(value);
+  };
 
   const handleSignOut = () => {
     Alert.alert('로그아웃', '정말 로그아웃하시겠어요?', [
@@ -185,20 +190,13 @@ export default function SettingsScreen() {
           </View>
           <View className="flex-row items-center px-4 py-3">
             <Text className="text-xl mr-3">⏰</Text>
-            <Text className="flex-1 text-base text-gray-800">데일리 리마인더</Text>
+            <View className="flex-1">
+              <Text className="text-base text-gray-800">데일리 리마인더</Text>
+              <Text className="text-xs text-gray-400">매일 저녁 8시</Text>
+            </View>
             <Switch
-              value={notifSettings?.daily_reminder ?? true}
-              onValueChange={() => {}}
-              trackColor={{ true: Colors.primary[500] }}
-            />
-          </View>
-          <Divider />
-          <View className="flex-row items-center px-4 py-3">
-            <Text className="text-xl mr-3">📅</Text>
-            <Text className="flex-1 text-base text-gray-800">주간 리포트</Text>
-            <Switch
-              value={notifSettings?.weekly_report ?? true}
-              onValueChange={() => {}}
+              value={dailyReminderOn}
+              onValueChange={handleDailyReminderToggle}
               trackColor={{ true: Colors.primary[500] }}
             />
           </View>

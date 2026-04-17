@@ -8,3 +8,4 @@ export { LoadingSpinner } from './LoadingSpinner';
 export { EmptyState } from './EmptyState';
 export { Divider } from './Divider';
 export { PointCounter, PointBurst } from './PointCounter';
+export { ErrorBoundary } from './ErrorBoundary';

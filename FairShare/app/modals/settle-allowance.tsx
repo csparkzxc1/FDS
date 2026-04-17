@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { Avatar, Button, Card, LoadingSpinner } from '@/components/ui';
 import { formatDate, getWeekRange } from '@/utils/date';
 import { getChildWeeklyPoints, settleAllowance } from '@/services/allowanceService';
 import { IS_DEV_BYPASS, MOCK_PARTNER } from '@/utils/devMode';
+import { Colors } from '@/constants/design-tokens';
 
 export default function SettleAllowanceModal() {
   const { childId } = useLocalSearchParams<{ childId: string }>();
@@ -16,6 +17,7 @@ export default function SettleAllowanceModal() {
   const household = useHouseholdStore((s) => s.current);
   const queryClient = useQueryClient();
   const { start, end } = getWeekRange();
+  const [carryover, setCarryover] = useState(false);
 
   const members = useHouseholdStore((s) => s.members);
   const childMember = IS_DEV_BYPASS
@@ -42,9 +44,12 @@ export default function SettleAllowanceModal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settlements'] });
       const childName = (childMember as any)?.user?.display_name ?? '자녀';
-      Alert.alert('지급 완료', `${childName}에게 ${totalAmount.toLocaleString()}원 지급 완료! 🎉`, [
-        { text: '확인', onPress: () => router.back() },
-      ]);
+      const carryoverNote = carryover ? '\n포인트가 다음 주로 이월됩니다.' : '\n이번 주 포인트가 초기화됩니다.';
+      Alert.alert(
+        '지급 완료',
+        `${childName}에게 ${totalAmount.toLocaleString()}원 지급 완료! 🎉${carryoverNote}`,
+        [{ text: '확인', onPress: () => router.back() }],
+      );
     },
     onError: () => Alert.alert('오류', '정산에 실패했습니다'),
   });
@@ -73,7 +78,9 @@ export default function SettleAllowanceModal() {
             name={childUser?.display_name ?? '?'}
             size="xl"
           />
-          <Text className="text-xl font-bold text-gray-900 mt-3">{childUser?.display_name ?? '자녀'}</Text>
+          <Text className="text-xl font-bold text-gray-900 mt-3">
+            {childUser?.display_name ?? '자녀'}
+          </Text>
           <Text className="text-sm text-gray-500 mt-1">
             {formatDate(start)} – {formatDate(end)}
           </Text>
@@ -90,7 +97,27 @@ export default function SettleAllowanceModal() {
           </View>
           <View className="flex-row items-center justify-between py-3">
             <Text className="text-gray-900 font-semibold text-lg">지급 금액</Text>
-            <Text className="text-3xl font-bold text-success-600">{totalAmount.toLocaleString()}원</Text>
+            <Text className="text-3xl font-bold text-success-600">
+              {totalAmount.toLocaleString()}원
+            </Text>
+          </View>
+        </Card>
+
+        <Card variant="default" className="mb-5 px-4 py-4">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 mr-4">
+              <Text className="text-base font-medium text-gray-800">포인트 이월</Text>
+              <Text className="text-xs text-gray-500 mt-0.5">
+                {carryover
+                  ? '정산 후 포인트가 다음 주로 이월됩니다'
+                  : '정산 후 이번 주 포인트가 초기화됩니다'}
+              </Text>
+            </View>
+            <Switch
+              value={carryover}
+              onValueChange={setCarryover}
+              trackColor={{ true: Colors.primary[500] }}
+            />
           </View>
         </Card>
 
@@ -101,9 +128,12 @@ export default function SettleAllowanceModal() {
           loading={isPending}
           onPress={() => {
             const childName = childUser?.display_name ?? '자녀';
+            const carryoverNote = carryover
+              ? '\n포인트는 다음 주로 이월됩니다.'
+              : '\n이번 주 포인트가 초기화됩니다.';
             Alert.alert(
               '용돈 지급',
-              `${childName}에게 ${totalAmount.toLocaleString()}원을 지급하시겠어요?`,
+              `${childName}에게 ${totalAmount.toLocaleString()}원을 지급하시겠어요?${carryoverNote}`,
               [
                 { text: '취소', style: 'cancel' },
                 { text: '지급 완료', onPress: () => settle() },

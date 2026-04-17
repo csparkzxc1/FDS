@@ -23,7 +23,9 @@ import {
   PointCounter,
 } from '@/components/ui';
 import { CategoryColors } from '@/constants/design-tokens';
-import { useChores, useMyWeeklyPoints, useCreateChoreLog } from '@/hooks/queries/useChores';
+import { useChores, useMyWeeklyPoints, useCreateChoreLog, useChoreLogs } from '@/hooks/queries/useChores';
+import { useRewardGoals } from '@/hooks/queries/useRewardGoals';
+import { getLevel, getLevelProgress, getNextLevel, calculateStreak, getStreakBadge } from '@/utils/gamification';
 import type { ChoreRow } from '@/services/choreService';
 
 export default function HomeScreen() {
@@ -38,6 +40,29 @@ export default function HomeScreen() {
 
   const myMember = members.find((m) => m.user_id === user?.id);
   const isParent = myMember?.role === 'parent';
+  const isChild = myMember?.role === 'child';
+
+  const { data: myLogs = [] } = useChoreLogs(
+    isChild ? household?.householdId : undefined,
+    isChild ? { userId: user?.id, limit: 200 } : undefined,
+  );
+  const { data: goals = [] } = useRewardGoals(
+    isChild ? household?.householdId : undefined,
+    isChild ? user?.id : undefined,
+  );
+
+  const totalPoints = isChild
+    ? myLogs.filter((l) => l.status === 'approved').reduce((s, l) => s + l.points_awarded, 0)
+    : 0;
+  const streak = isChild ? calculateStreak(myLogs) : 0;
+  const streakBadge = getStreakBadge(streak);
+  const level = getLevel(totalPoints);
+  const levelProgress = getLevelProgress(totalPoints);
+  const nextLevel = getNextLevel(totalPoints);
+  const activeGoal = goals.find((g) => !g.achieved_at) ?? null;
+  const goalProgress = activeGoal
+    ? Math.min(100, Math.round((totalPoints / activeGoal.target_points) * 100))
+    : 0;
 
   const handleChorePress = async (chore: ChoreRow) => {
     if (chore.requires_photo || chore.requires_approval) {
@@ -116,6 +141,62 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        {isChild && (
+          <View className="px-5 mb-4" style={{ gap: 10 }}>
+            <Card variant="elevated" padding="md">
+              <View className="flex-row items-center mb-2">
+                <Text className="text-3xl mr-2">{level.emoji}</Text>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-gray-900">
+                    Lv.{level.level} {level.label}
+                  </Text>
+                  {nextLevel ? (
+                    <Text className="text-xs text-gray-500">
+                      다음 레벨까지 {nextLevel.remaining}pt
+                    </Text>
+                  ) : (
+                    <Text className="text-xs text-primary-500">최고 레벨 달성!</Text>
+                  )}
+                </View>
+                {streak > 0 && (
+                  <View className="items-center">
+                    <Text className="text-2xl">{streakBadge || '🔥'}</Text>
+                    <Text className="text-xs text-gray-500">{streak}일 연속</Text>
+                  </View>
+                )}
+              </View>
+              <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <View
+                  className="h-full rounded-full bg-primary-500"
+                  style={{ width: `${levelProgress}%` }}
+                />
+              </View>
+            </Card>
+
+            {activeGoal && (
+              <Card variant="elevated" padding="md">
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-2xl mr-2">🎯</Text>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-800" numberOfLines={1}>
+                      {activeGoal.title}
+                    </Text>
+                    <Text className="text-xs text-gray-500">
+                      {totalPoints} / {activeGoal.target_points}pt ({goalProgress}%)
+                    </Text>
+                  </View>
+                </View>
+                <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <View
+                    className="h-full rounded-full"
+                    style={{ width: `${goalProgress}%`, backgroundColor: '#F59E0B' }}
+                  />
+                </View>
+              </Card>
+            )}
+          </View>
+        )}
 
         {members.length > 1 && (
           <View className="px-5 mb-4">

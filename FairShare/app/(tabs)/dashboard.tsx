@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useHouseholdStore } from '@/stores/householdStore';
 import { Card, Avatar, EmptyState, LoadingSpinner } from '@/components/ui';
+import { DonutChart } from '@/components/charts/DonutChart';
+import { SeesawChart } from '@/components/charts/SeesawChart';
 import { Colors, CategoryColors, CategoryIcons, CATEGORY_LABELS } from '@/constants/design-tokens';
 import { getWeekRange, getMonthRange, formatDate } from '@/utils/date';
 import { calculateFairnessIndex, getFairnessLabel, calculatePercentages } from '@/utils/fairness';
@@ -131,10 +133,10 @@ export default function DashboardScreen() {
               </Text>
             </Card>
 
-            {household?.mode !== 'family' && fairness && (
+            {household?.mode !== 'family' && fairness && stats.memberStats.length >= 2 && (
               <Card variant="elevated" className="mb-4">
-                <Text className="text-sm text-gray-500 mb-2">공정성 지수</Text>
-                <View className="flex-row items-center mb-3">
+                <Text className="text-sm text-gray-500 mb-3">공정성 지수</Text>
+                <View className="flex-row items-center mb-4">
                   <Text className="text-3xl font-bold mr-3" style={{ color: fairness.color }}>
                     {stats.fairnessIndex}%
                   </Text>
@@ -142,13 +144,15 @@ export default function DashboardScreen() {
                     {fairness.label}
                   </Text>
                 </View>
-                <View className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                  <View
-                    className="h-full rounded-full"
-                    style={{ width: `${stats.fairnessIndex}%`, backgroundColor: fairness.color }}
-                  />
-                </View>
-                <Text className="text-xs text-gray-400 mt-1 text-center">
+                <SeesawChart
+                  leftLabel={stats.memberStats[0].displayName}
+                  rightLabel={stats.memberStats[1].displayName}
+                  leftPct={stats.memberStats[0].percentage}
+                  rightPct={stats.memberStats[1].percentage}
+                  leftColor={Colors.primary[500]}
+                  rightColor="#EC4899"
+                />
+                <Text className="text-xs text-gray-400 mt-3 text-center">
                   50%에 가까울수록 균형잡혔어요
                 </Text>
               </Card>
@@ -176,19 +180,17 @@ export default function DashboardScreen() {
 
             <Card variant="elevated" className="mb-4">
               <Text className="text-sm font-semibold text-gray-700 mb-3">카테고리 분포</Text>
-              {Object.entries(stats.categoryMap)
-                .sort(([, a], [, b]) => b - a)
-                .map(([cat, pts]) => (
-                  <View key={cat} className="flex-row items-center mb-2">
-                    <Text className="text-lg mr-2">
-                      {CategoryIcons[cat as keyof typeof CategoryIcons] ?? '✨'}
-                    </Text>
-                    <Text className="flex-1 text-sm text-gray-700">
-                      {CATEGORY_LABELS_MAP[cat] ?? cat}
-                    </Text>
-                    <Text className="text-sm font-semibold text-gray-800">{pts}pt</Text>
-                  </View>
-                ))}
+              <DonutChart
+                data={Object.entries(stats.categoryMap)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([cat, pts]) => ({
+                    label: `${CategoryIcons[cat as keyof typeof CategoryIcons] ?? '✨'} ${CATEGORY_LABELS_MAP[cat] ?? cat}`,
+                    value: pts,
+                    color: CategoryColors[cat as keyof typeof CategoryColors] ?? Colors.gray[300],
+                  }))}
+                centerLabel={`${stats.totalPoints}pt`}
+                centerSub="총 포인트"
+              />
             </Card>
 
             <Card variant="elevated">

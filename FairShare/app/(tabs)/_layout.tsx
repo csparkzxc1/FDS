@@ -5,7 +5,7 @@ import { useHouseholdStore } from '@/stores/householdStore';
 import { useHouseholdInit } from '@/hooks/useHouseholdInit';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { Colors } from '@/constants/design-tokens';
-import { NumericBadge } from '@/components/ui';
+import { NumericBadge, ErrorBoundary } from '@/components/ui';
 
 function TabIcon({
   emoji,
@@ -52,9 +52,10 @@ export default function TabsLayout() {
   }
 
   return (
-    <>
-      <TabsInit />
-      <Tabs
+    <ErrorBoundary>
+      <>
+        <TabsInit />
+        <Tabs
         screenOptions={{
           headerShown: false,
           tabBarShowLabel: false,
@@ -99,6 +100,7 @@ export default function TabsLayout() {
           }}
         />
       </Tabs>
-    </>
+      </>
+    </ErrorBoundary>
   );
 }
