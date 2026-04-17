@@ -132,8 +132,10 @@ CREATE OR REPLACE FUNCTION public.is_household_member(hid uuid)
 RETURNS boolean
 LANGUAGE sql SECURITY DEFINER STABLE AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.household_members
-    WHERE household_id = hid AND user_id = auth.uid()
+    SELECT 1
+    FROM public.household_members hm
+    WHERE hm.household_id = hid
+      AND hm.user_id = auth.uid()
   );
 $$;
 
@@ -141,12 +143,14 @@ CREATE OR REPLACE FUNCTION public.is_household_parent(hid uuid)
 RETURNS boolean
 LANGUAGE sql SECURITY DEFINER STABLE AS $$
   SELECT EXISTS (
-    SELECT 1 FROM public.household_members
-    WHERE household_id = hid AND user_id = auth.uid() AND role = 'parent'
+    SELECT 1
+    FROM public.household_members hm
+    WHERE hm.household_id = hid
+      AND hm.user_id = auth.uid()
+      AND hm.role = 'parent'
   );
 $$;
 
--- handle_new_user: NEW.* 참조를 변수에 먼저 담아서 렌더링 문제 회피
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -191,7 +195,7 @@ BEGIN
   UPDATE public.households
   SET invite_code = new_code,
       invite_expires_at = now() + interval '7 days'
-  WHERE id = hid;
+  WHERE households.id = hid;
   RETURN new_code;
 END;
 $$;
@@ -209,125 +213,142 @@ ALTER TABLE public.allowance_settlements  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reward_goals           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_settings  ENABLE ROW LEVEL SECURITY;
 
+-- ── users policies ───────────────────────────────────────────
+-- users.id 로 명시: 서브쿼리 내 hm1.id / hm2.id 와 구분
 CREATE POLICY "Users can view members of their household"
   ON public.users FOR SELECT
   USING (
-    id = auth.uid()
+    users.id = auth.uid()
     OR EXISTS (
       SELECT 1
       FROM public.household_members hm1
-      JOIN public.household_members hm2 ON hm1.household_id = hm2.household_id
-      WHERE hm1.user_id = auth.uid() AND hm2.user_id = id
+      JOIN public.household_members hm2
+        ON hm1.household_id = hm2.household_id
+      WHERE hm1.user_id = auth.uid()
+        AND hm2.user_id = users.id
     )
   );
 
 CREATE POLICY "Users can update own profile"
   ON public.users FOR UPDATE
-  USING (id = auth.uid())
-  WITH CHECK (id = auth.uid());
+  USING (users.id = auth.uid())
+  WITH CHECK (users.id = auth.uid());
 
 CREATE POLICY "Users can insert own profile"
   ON public.users FOR INSERT
-  WITH CHECK (id = auth.uid());
+  WITH CHECK (users.id = auth.uid());
 
+-- ── households policies ──────────────────────────────────────
 CREATE POLICY "Household members can view their household"
   ON public.households FOR SELECT
-  USING (public.is_household_member(id));
+  USING (public.is_household_member(households.id));
 
 CREATE POLICY "Authenticated users can create household"
   ON public.households FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL AND created_by = auth.uid());
+  WITH CHECK (auth.uid() IS NOT NULL AND households.created_by = auth.uid());
 
 CREATE POLICY "Household creator can update"
   ON public.households FOR UPDATE
-  USING (created_by = auth.uid())
-  WITH CHECK (created_by = auth.uid());
+  USING (households.created_by = auth.uid())
+  WITH CHECK (households.created_by = auth.uid());
 
+-- ── household_members policies ───────────────────────────────
 CREATE POLICY "Members can view their household members"
   ON public.household_members FOR SELECT
-  USING (public.is_household_member(household_id));
+  USING (public.is_household_member(household_members.household_id));
 
 CREATE POLICY "Authenticated users can join household"
   ON public.household_members FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL AND user_id = auth.uid());
+  WITH CHECK (auth.uid() IS NOT NULL AND household_members.user_id = auth.uid());
 
 CREATE POLICY "Members can remove themselves"
   ON public.household_members FOR DELETE
-  USING (user_id = auth.uid());
+  USING (household_members.user_id = auth.uid());
 
 CREATE POLICY "Parents can remove child members"
   ON public.household_members FOR DELETE
-  USING (public.is_household_parent(household_id) AND role = 'child');
+  USING (
+    public.is_household_parent(household_members.household_id)
+    AND household_members.role = 'child'
+  );
 
+-- ── chores policies ──────────────────────────────────────────
 CREATE POLICY "Household members can view chores"
   ON public.chores FOR SELECT
-  USING (public.is_household_member(household_id));
+  USING (public.is_household_member(chores.household_id));
 
 CREATE POLICY "Household members can create chores"
   ON public.chores FOR INSERT
-  WITH CHECK (public.is_household_member(household_id));
+  WITH CHECK (public.is_household_member(chores.household_id));
 
 CREATE POLICY "Household members can update chores"
   ON public.chores FOR UPDATE
-  USING (public.is_household_member(household_id))
-  WITH CHECK (public.is_household_member(household_id));
+  USING (public.is_household_member(chores.household_id))
+  WITH CHECK (public.is_household_member(chores.household_id));
 
 CREATE POLICY "Household members can archive chores"
   ON public.chores FOR DELETE
-  USING (public.is_household_member(household_id));
+  USING (public.is_household_member(chores.household_id));
 
+-- ── chore_logs policies ──────────────────────────────────────
 CREATE POLICY "Household members can view chore logs"
   ON public.chore_logs FOR SELECT
-  USING (public.is_household_member(household_id));
+  USING (public.is_household_member(chore_logs.household_id));
 
 CREATE POLICY "Household members can create chore logs"
   ON public.chore_logs FOR INSERT
   WITH CHECK (
-    public.is_household_member(household_id)
-    AND performed_by = auth.uid()
+    public.is_household_member(chore_logs.household_id)
+    AND chore_logs.performed_by = auth.uid()
   );
 
 CREATE POLICY "Performers can update own pending logs"
   ON public.chore_logs FOR UPDATE
-  USING (performed_by = auth.uid() AND status = 'pending')
-  WITH CHECK (performed_by = auth.uid() AND status = 'pending');
+  USING (chore_logs.performed_by = auth.uid() AND chore_logs.status = 'pending')
+  WITH CHECK (chore_logs.performed_by = auth.uid() AND chore_logs.status = 'pending');
 
 CREATE POLICY "Parents can approve/reject chore logs"
   ON public.chore_logs FOR UPDATE
-  USING (public.is_household_parent(household_id) AND status = 'pending')
-  WITH CHECK (public.is_household_parent(household_id));
+  USING (
+    public.is_household_parent(chore_logs.household_id)
+    AND chore_logs.status = 'pending'
+  )
+  WITH CHECK (public.is_household_parent(chore_logs.household_id));
 
+-- ── allowance_settlements policies ──────────────────────────
 CREATE POLICY "Household members can view settlements"
   ON public.allowance_settlements FOR SELECT
-  USING (public.is_household_member(household_id));
+  USING (public.is_household_member(allowance_settlements.household_id));
 
 CREATE POLICY "Parents can create settlements"
   ON public.allowance_settlements FOR INSERT
-  WITH CHECK (public.is_household_parent(household_id));
+  WITH CHECK (public.is_household_parent(allowance_settlements.household_id));
 
 CREATE POLICY "Parents can update settlements"
   ON public.allowance_settlements FOR UPDATE
-  USING (public.is_household_parent(household_id))
-  WITH CHECK (public.is_household_parent(household_id));
+  USING (public.is_household_parent(allowance_settlements.household_id))
+  WITH CHECK (public.is_household_parent(allowance_settlements.household_id));
 
+-- ── reward_goals policies ────────────────────────────────────
 CREATE POLICY "Household members can view reward goals"
   ON public.reward_goals FOR SELECT
-  USING (public.is_household_member(household_id));
+  USING (public.is_household_member(reward_goals.household_id));
 
 CREATE POLICY "Children can manage own goals"
   ON public.reward_goals FOR ALL
-  USING (child_id = auth.uid())
-  WITH CHECK (child_id = auth.uid());
+  USING (reward_goals.child_id = auth.uid())
+  WITH CHECK (reward_goals.child_id = auth.uid());
 
 CREATE POLICY "Parents can manage child goals"
   ON public.reward_goals FOR ALL
-  USING (public.is_household_parent(household_id))
-  WITH CHECK (public.is_household_parent(household_id));
+  USING (public.is_household_parent(reward_goals.household_id))
+  WITH CHECK (public.is_household_parent(reward_goals.household_id));
 
+-- ── notification_settings policies ──────────────────────────
 CREATE POLICY "Users manage own notification settings"
   ON public.notification_settings FOR ALL
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid());
+  USING (notification_settings.user_id = auth.uid())
+  WITH CHECK (notification_settings.user_id = auth.uid());
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.chore_logs;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.chores;
@@ -409,69 +430,79 @@ CREATE POLICY "Users can manage own reward goal images"
 -- [3/4] member_pending
 -- ============================================================
 
-ALTER TABLE household_members ALTER COLUMN role DROP NOT NULL;
+ALTER TABLE public.household_members ALTER COLUMN role DROP NOT NULL;
 
-ALTER TABLE household_members
+ALTER TABLE public.household_members
   ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active'
   CHECK (status IN ('pending', 'active'));
 
-CREATE OR REPLACE FUNCTION is_household_member(hid uuid)
+CREATE OR REPLACE FUNCTION public.is_household_member(hid uuid)
 RETURNS boolean
 LANGUAGE sql SECURITY DEFINER STABLE AS $$
   SELECT EXISTS (
-    SELECT 1 FROM household_members
-    WHERE household_id = hid
-      AND user_id = auth.uid()
-      AND status = 'active'
+    SELECT 1
+    FROM public.household_members hm
+    WHERE hm.household_id = hid
+      AND hm.user_id = auth.uid()
+      AND hm.status = 'active'
   );
 $$;
 
-CREATE OR REPLACE FUNCTION is_pending_member(hid uuid)
+CREATE OR REPLACE FUNCTION public.is_pending_member(hid uuid)
 RETURNS boolean
 LANGUAGE sql SECURITY DEFINER STABLE AS $$
   SELECT EXISTS (
-    SELECT 1 FROM household_members
-    WHERE household_id = hid
-      AND user_id = auth.uid()
-      AND status = 'pending'
+    SELECT 1
+    FROM public.household_members hm
+    WHERE hm.household_id = hid
+      AND hm.user_id = auth.uid()
+      AND hm.status = 'pending'
   );
 $$;
 
-CREATE OR REPLACE FUNCTION is_household_admin(hid uuid)
+CREATE OR REPLACE FUNCTION public.is_household_admin(hid uuid)
 RETURNS boolean
 LANGUAGE sql SECURITY DEFINER STABLE AS $$
   SELECT EXISTS (
-    SELECT 1 FROM household_members
-    WHERE household_id = hid
-      AND user_id = auth.uid()
-      AND role = 'parent'
-      AND status = 'active'
+    SELECT 1
+    FROM public.household_members hm
+    WHERE hm.household_id = hid
+      AND hm.user_id = auth.uid()
+      AND hm.role = 'parent'
+      AND hm.status = 'active'
   );
 $$;
 
-DROP POLICY IF EXISTS "Members can view household members"  ON household_members;
-DROP POLICY IF EXISTS "Users can join households"           ON household_members;
-DROP POLICY IF EXISTS "Members can update own record"       ON household_members;
-DROP POLICY IF EXISTS "Members can leave household"         ON household_members;
+DROP POLICY IF EXISTS "Members can view household members"  ON public.household_members;
+DROP POLICY IF EXISTS "Users can join households"           ON public.household_members;
+DROP POLICY IF EXISTS "Members can update own record"       ON public.household_members;
+DROP POLICY IF EXISTS "Members can leave household"         ON public.household_members;
 
 CREATE POLICY "Active members can view household members"
-  ON household_members FOR SELECT
+  ON public.household_members FOR SELECT
   USING (
-    (status = 'active' AND is_household_member(household_id))
-    OR (user_id = auth.uid())
+    (household_members.status = 'active'
+      AND public.is_household_member(household_members.household_id))
+    OR household_members.user_id = auth.uid()
   );
 
 CREATE POLICY "Users can join households"
-  ON household_members FOR INSERT
-  WITH CHECK (user_id = auth.uid());
+  ON public.household_members FOR INSERT
+  WITH CHECK (household_members.user_id = auth.uid());
 
 CREATE POLICY "Members can update own or admin can update household members"
-  ON household_members FOR UPDATE
-  USING (user_id = auth.uid() OR is_household_admin(household_id));
+  ON public.household_members FOR UPDATE
+  USING (
+    household_members.user_id = auth.uid()
+    OR public.is_household_admin(household_members.household_id)
+  );
 
 CREATE POLICY "Members can leave or admin can remove"
-  ON household_members FOR DELETE
-  USING (user_id = auth.uid() OR is_household_admin(household_id));
+  ON public.household_members FOR DELETE
+  USING (
+    household_members.user_id = auth.uid()
+    OR public.is_household_admin(household_members.household_id)
+  );
 
 
 -- ============================================================
