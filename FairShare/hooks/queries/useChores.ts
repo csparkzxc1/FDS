@@ -10,6 +10,7 @@ import {
   getPendingApprovals,
   approveChoreLog,
   rejectChoreLog,
+  getMyWeeklyPoints,
   type CreateChoreInput,
   type CreateChoreLogInput,
 } from '@/services/choreService';
@@ -96,6 +97,15 @@ export function useApproveChoreLog() {
       queryClient.invalidateQueries({ queryKey: ['choreLogs'] });
       queryClient.invalidateQueries({ queryKey: ['pendingApprovals'] });
     },
+  });
+}
+
+export function useMyWeeklyPoints(householdId: string | undefined, userId: string | undefined) {
+  return useQuery({
+    queryKey: ['myWeeklyPoints', householdId, userId],
+    queryFn: () => getMyWeeklyPoints(householdId!, userId!),
+    enabled: !!householdId && !!userId,
+    staleTime: 60 * 1000,
   });
 }
 

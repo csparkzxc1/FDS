@@ -14,9 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useHouseholdStore } from '@/stores/householdStore';
-import { supabase } from '@/services/supabase';
+import { useCreateChore, useUpdateChore } from '@/hooks/queries/useChores';
+import { getChores } from '@/services/choreService';
 import { Button, Input } from '@/components/ui';
 import { Colors } from '@/constants/design-tokens';
 import type { ChoreCategory } from '@/types/database';
@@ -29,7 +30,10 @@ const schema = z.object({
   requiresPhoto: z.boolean(),
   requiresApproval: z.boolean(),
   isInvisibleLabor: z.boolean(),
-  estimatedMinutes: z.preprocess((v) => (v === '' || v == null ? undefined : Number(v)), z.number().min(0).max(480).optional()),
+  estimatedMinutes: z.preprocess(
+    (v) => (v === '' || v == null ? undefined : Number(v)),
+    z.number().min(0).max(480).optional(),
+  ),
 });
 
 type Form = {
@@ -57,16 +61,19 @@ const ICON_PRESETS = ['🧹', '🍳', '🧺', '🛒', '🚽', '🪟', '🗑️',
 export default function AddChoreModal() {
   const { choreId } = useLocalSearchParams<{ choreId?: string }>();
   const household = useHouseholdStore((s) => s.current);
-  const queryClient = useQueryClient();
   const isEdit = !!choreId;
+
+  const { mutateAsync: createChore } = useCreateChore();
+  const { mutateAsync: updateChore } = useUpdateChore();
 
   const { data: existing } = useQuery({
     queryKey: ['chore', choreId],
     queryFn: async () => {
-      const { data } = await (supabase.from('chores') as any).select('*').eq('id', choreId!).single();
-      return data as import('@/types/database').ChoreRow | null;
+      if (!household?.householdId) return null;
+      const chores = await getChores(household.householdId);
+      return chores.find((c) => c.id === choreId) ?? null;
     },
-    enabled: isEdit,
+    enabled: isEdit && !!household?.householdId,
   });
 
   const {
@@ -103,39 +110,42 @@ export default function AddChoreModal() {
   const selectedCategory = watch('category');
   const selectedIcon = watch('icon');
 
-  const { mutateAsync: save } = useMutation({
-    mutationFn: async (data: Form) => {
-      if (!household?.householdId) throw new Error('No household');
+  const onSubmit = async (data: Form) => {
+    if (!household?.householdId) return;
 
-      const payload = {
-        household_id: household.householdId,
-        title: data.title,
-        icon: data.icon,
-        category: data.category,
-        points: data.points,
-        requires_photo: data.requiresPhoto,
-        requires_approval: data.requiresApproval,
-        is_invisible_labor: data.isInvisibleLabor,
-        estimated_minutes: data.estimatedMinutes ?? null,
-      };
-
-      const tb = supabase.from('chores') as any;
-      if (isEdit) {
-        const { error } = await tb.update(payload).eq('id', choreId!);
-        if (error) throw error;
+    try {
+      if (isEdit && choreId) {
+        await updateChore({
+          choreId,
+          updates: {
+            title: data.title,
+            icon: data.icon,
+            category: data.category,
+            points: data.points,
+            requiresPhoto: data.requiresPhoto,
+            requiresApproval: data.requiresApproval,
+            isInvisibleLabor: data.isInvisibleLabor,
+            estimatedMinutes: data.estimatedMinutes,
+          },
+        });
       } else {
-        const { error } = await tb.insert(payload);
-        if (error) throw error;
+        await createChore({
+          householdId: household.householdId,
+          title: data.title,
+          icon: data.icon,
+          category: data.category,
+          points: data.points,
+          requiresPhoto: data.requiresPhoto,
+          requiresApproval: data.requiresApproval,
+          isInvisibleLabor: data.isInvisibleLabor,
+          estimatedMinutes: data.estimatedMinutes,
+        });
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chores'] });
       router.back();
-    },
-    onError: () => {
+    } catch {
       Alert.alert('오류', '저장에 실패했습니다');
-    },
-  });
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -161,7 +171,6 @@ export default function AddChoreModal() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 40 }}
         >
-          {/* Icon picker */}
           <Text className="text-sm font-medium text-gray-700 mb-2">아이콘</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
             <View className="flex-row gap-2">
@@ -198,7 +207,6 @@ export default function AddChoreModal() {
             )}
           />
 
-          {/* Category */}
           <Text className="text-sm font-medium text-gray-700 mb-2">카테고리</Text>
           <View className="flex-row flex-wrap gap-2 mb-4">
             {CATEGORY_OPTIONS.map((opt) => (
@@ -207,13 +215,16 @@ export default function AddChoreModal() {
                 onPress={() => setValue('category', opt.value)}
                 className="flex-row items-center px-3 py-2 rounded-full"
                 style={{
-                  backgroundColor: selectedCategory === opt.value ? Colors.primary[500] : Colors.gray[100],
+                  backgroundColor:
+                    selectedCategory === opt.value ? Colors.primary[500] : Colors.gray[100],
                 }}
               >
                 <Text className="text-sm mr-1">{opt.emoji}</Text>
                 <Text
                   className="text-sm font-medium"
-                  style={{ color: selectedCategory === opt.value ? Colors.white : Colors.gray[700] }}
+                  style={{
+                    color: selectedCategory === opt.value ? Colors.white : Colors.gray[700],
+                  }}
                 >
                   {opt.label}
                 </Text>
@@ -253,7 +264,6 @@ export default function AddChoreModal() {
             )}
           />
 
-          {/* Toggles */}
           {(['requiresPhoto', 'requiresApproval', 'isInvisibleLabor'] as const).map((field) => {
             const labels: Record<string, string> = {
               requiresPhoto: '사진 인증 필요',
@@ -284,7 +294,7 @@ export default function AddChoreModal() {
             size="lg"
             fullWidth
             loading={isSubmitting}
-            onPress={handleSubmit((data) => save(data))}
+            onPress={handleSubmit(onSubmit)}
           >
             {isEdit ? '수정 완료' : '추가하기'}
           </Button>

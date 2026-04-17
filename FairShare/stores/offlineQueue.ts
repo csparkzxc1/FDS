@@ -1,15 +1,18 @@
-/**
- * Offline queue store
- * 오프라인 상태에서 집안일 체크 시 큐에 넣고
- * 온라인 복귀 시 자동 동기화
- */
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChoreCheckPayload } from '@/types';
 
 interface QueuedAction {
   id: string;
   type: 'chore_check';
-  payload: ChoreCheckPayload & { householdId: string; performedAt: string };
+  payload: ChoreCheckPayload & {
+    householdId: string;
+    performedBy: string;
+    pointsAwarded: number;
+    performedAt: string;
+    requiresApproval: boolean;
+  };
   retryCount: number;
 }
 
@@ -24,34 +27,43 @@ interface OfflineQueueState {
   clear: () => void;
 }
 
-export const useOfflineQueueStore = create<OfflineQueueState>((set) => ({
-  queue: [],
-  isSyncing: false,
+export const useOfflineQueueStore = create<OfflineQueueState>()(
+  persist(
+    (set) => ({
+      queue: [],
+      isSyncing: false,
 
-  enqueue: (action) =>
-    set((state) => ({
-      queue: [
-        ...state.queue,
-        {
-          ...action,
-          id: `offline_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-          retryCount: 0,
-        },
-      ],
-    })),
+      enqueue: (action) =>
+        set((state) => ({
+          queue: [
+            ...state.queue,
+            {
+              ...action,
+              id: `offline_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+              retryCount: 0,
+            },
+          ],
+        })),
 
-  dequeue: (id) =>
-    set((state) => ({
-      queue: state.queue.filter((item) => item.id !== id),
-    })),
+      dequeue: (id) =>
+        set((state) => ({
+          queue: state.queue.filter((item) => item.id !== id),
+        })),
 
-  incrementRetry: (id) =>
-    set((state) => ({
-      queue: state.queue.map((item) =>
-        item.id === id ? { ...item, retryCount: item.retryCount + 1 } : item
-      ),
-    })),
+      incrementRetry: (id) =>
+        set((state) => ({
+          queue: state.queue.map((item) =>
+            item.id === id ? { ...item, retryCount: item.retryCount + 1 } : item,
+          ),
+        })),
 
-  setIsSyncing: (isSyncing) => set({ isSyncing }),
-  clear: () => set({ queue: [], isSyncing: false }),
-}));
+      setIsSyncing: (isSyncing) => set({ isSyncing }),
+      clear: () => set({ queue: [], isSyncing: false }),
+    }),
+    {
+      name: 'fairshare-offline-queue',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ queue: state.queue }),
+    },
+  ),
+);

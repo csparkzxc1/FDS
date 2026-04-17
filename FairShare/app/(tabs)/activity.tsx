@@ -1,56 +1,34 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import { useHouseholdStore } from '@/stores/householdStore';
-import { supabase } from '@/services/supabase';
+import { useChoreLogs } from '@/hooks/queries/useChores';
 import { Avatar, Badge, EmptyState, LoadingSpinner } from '@/components/ui';
 import { formatDateTime } from '@/utils/date';
 import { Colors } from '@/constants/design-tokens';
-import type { ChoreLogRow, ChoreRow, UserRow } from '@/types/database';
+import type { ChoreLogRow } from '@/services/choreService';
 
 type Filter = 'all' | 'mine' | 'pending';
-
-interface LogEntry extends ChoreLogRow {
-  chore: ChoreRow;
-  performer: UserRow;
-}
 
 export default function ActivityScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const user = useAuthStore((s) => s.user);
   const household = useHouseholdStore((s) => s.current);
 
-  const { data: logs = [], isLoading } = useQuery({
-    queryKey: ['choreLogs', household?.householdId, filter],
-    queryFn: async () => {
-      if (!household?.householdId) return [];
-
-      let query = supabase
-        .from('chore_logs')
-        .select('*, chore:chores(*), performer:users!performed_by(*)')
-        .eq('household_id', household.householdId)
-        .order('performed_at', { ascending: false })
-        .limit(100);
-
-      if (filter === 'mine') {
-        query = query.eq('performed_by', user?.id ?? '');
-      } else if (filter === 'pending') {
-        query = query.eq('status', 'pending');
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data ?? []) as unknown as LogEntry[];
-    },
-    enabled: !!household?.householdId,
+  const { data: allLogs = [], isLoading } = useChoreLogs(household?.householdId, { limit: 100 });
+  const { data: mineLogs = [] } = useChoreLogs(household?.householdId, {
+    limit: 100,
+    userId: user?.id,
   });
+
+  const displayLogs = (() => {
+    switch (filter) {
+      case 'mine': return mineLogs;
+      case 'pending': return allLogs.filter((l) => l.status === 'pending');
+      default: return allLogs;
+    }
+  })();
 
   const FILTERS: { key: Filter; label: string }[] = [
     { key: 'all', label: '전체' },
@@ -69,7 +47,6 @@ export default function ActivityScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-secondary">
-      {/* Header */}
       <View className="px-5 pt-4 pb-2">
         <Text className="text-2xl font-bold text-gray-900 mb-4">활동 기록</Text>
         <View className="flex-row gap-2">
@@ -95,7 +72,7 @@ export default function ActivityScreen() {
 
       {isLoading ? (
         <LoadingSpinner fullScreen />
-      ) : logs.length === 0 ? (
+      ) : displayLogs.length === 0 ? (
         <EmptyState
           emoji="📋"
           title="아직 기록이 없어요"
@@ -103,42 +80,42 @@ export default function ActivityScreen() {
         />
       ) : (
         <FlatList
-          data={logs}
+          data={displayLogs}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 }}
           ItemSeparatorComponent={() => <View className="h-2" />}
-          renderItem={({ item }) => (
-            <View className="bg-white rounded-2xl p-4 flex-row items-center">
-              <View
-                className="w-12 h-12 rounded-xl items-center justify-center mr-3"
-                style={{ backgroundColor: '#F3F4F6' }}
-              >
-                <Text className="text-2xl">{item.chore?.icon ?? '✨'}</Text>
-              </View>
-              <View className="flex-1">
-                <Text className="font-semibold text-gray-900">{item.chore?.title}</Text>
-                <View className="flex-row items-center mt-0.5">
-                  <Avatar
-                    uri={item.performer?.avatar_url}
-                    name={item.performer?.display_name ?? '?'}
-                    size="xs"
-                  />
-                  <Text className="text-xs text-gray-500 ml-1.5">
-                    {item.performer?.display_name} · {formatDateTime(item.performed_at)}
-                  </Text>
+          renderItem={({ item }) => {
+            const log = item as any;
+            return (
+              <View className="bg-white rounded-2xl p-4 flex-row items-center">
+                <View className="w-12 h-12 rounded-xl items-center justify-center mr-3 bg-gray-100">
+                  <Text className="text-2xl">{log.chore?.icon ?? '✨'}</Text>
                 </View>
-                {item.status === 'rejected' && item.rejected_reason && (
-                  <Text className="text-xs text-danger-500 mt-1">
-                    반려 사유: {item.rejected_reason}
-                  </Text>
-                )}
+                <View className="flex-1">
+                  <Text className="font-semibold text-gray-900">{log.chore?.title ?? '집안일'}</Text>
+                  <View className="flex-row items-center mt-0.5">
+                    <Avatar
+                      uri={log.performer?.avatar_url}
+                      name={log.performer?.display_name ?? '?'}
+                      size="xs"
+                    />
+                    <Text className="text-xs text-gray-500 ml-1.5">
+                      {log.performer?.display_name ?? '사용자'} · {formatDateTime(item.performed_at)}
+                    </Text>
+                  </View>
+                  {item.status === 'rejected' && item.rejected_reason && (
+                    <Text className="text-xs text-danger-500 mt-1">
+                      반려 사유: {item.rejected_reason}
+                    </Text>
+                  )}
+                </View>
+                <View className="items-end gap-1">
+                  <Text className="text-primary-500 font-bold text-sm">+{item.points_awarded}pt</Text>
+                  {statusBadge(item.status)}
+                </View>
               </View>
-              <View className="items-end gap-1">
-                <Text className="text-primary-500 font-bold text-sm">+{item.points_awarded}pt</Text>
-                {statusBadge(item.status)}
-              </View>
-            </View>
-          )}
+            );
+          }}
         />
       )}
     </SafeAreaView>

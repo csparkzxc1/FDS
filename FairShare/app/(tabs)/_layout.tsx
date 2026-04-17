@@ -2,6 +2,8 @@ import { Tabs, Redirect } from 'expo-router';
 import { View, Text } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useHouseholdStore } from '@/stores/householdStore';
+import { useHouseholdInit } from '@/hooks/useHouseholdInit';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { Colors } from '@/constants/design-tokens';
 import { NumericBadge } from '@/components/ui';
 
@@ -35,6 +37,12 @@ function TabIcon({
   );
 }
 
+function TabsInit() {
+  useHouseholdInit();
+  useOfflineSync();
+  return null;
+}
+
 export default function TabsLayout() {
   const { isAuthenticated } = useAuth();
   const pendingCount = useHouseholdStore((s) => s.pendingApprovalCount);
@@ -44,50 +52,53 @@ export default function TabsLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          backgroundColor: Colors.white,
-          borderTopColor: Colors.gray[100],
-          height: 72,
-          paddingBottom: 8,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="home"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🏠" label="홈" focused={focused} />
-          ),
+    <>
+      <TabsInit />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarShowLabel: false,
+          tabBarStyle: {
+            backgroundColor: Colors.white,
+            borderTopColor: Colors.gray[100],
+            height: 72,
+            paddingBottom: 8,
+          },
         }}
-      />
-      <Tabs.Screen
-        name="activity"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="📋" label="기록" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="📊" label="대시보드" focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="⚙️" label="설정" focused={focused} badge={pendingCount} />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="home"
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <TabIcon emoji="🏠" label="홈" focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="activity"
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <TabIcon emoji="📋" label="기록" focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="dashboard"
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <TabIcon emoji="📊" label="대시보드" focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <TabIcon emoji="⚙️" label="설정" focused={focused} badge={pendingCount} />
+            ),
+          }}
+        />
+      </Tabs>
+    </>
   );
 }

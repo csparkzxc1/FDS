@@ -201,6 +201,27 @@ export async function approveChoreLog(logId: string, approverId: string): Promis
   if (error) throw error;
 }
 
+export async function getMyWeeklyPoints(
+  householdId: string,
+  userId: string,
+): Promise<number> {
+  if (IS_DEV_BYPASS) return 12;
+
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay() + 1);
+  weekStart.setHours(0, 0, 0, 0);
+
+  const { data } = await (supabase.from('chore_logs') as any)
+    .select('points_awarded')
+    .eq('household_id', householdId)
+    .eq('performed_by', userId)
+    .eq('status', 'approved')
+    .gte('performed_at', weekStart.toISOString());
+
+  return ((data ?? []) as any[]).reduce((sum: number, r: any) => sum + r.points_awarded, 0);
+}
+
 export async function rejectChoreLog(logId: string, reason?: string): Promise<void> {
   if (IS_DEV_BYPASS) return;
 
