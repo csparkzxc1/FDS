@@ -1,6 +1,13 @@
+import type { ReactElement } from 'react';
 import { useTranslations } from 'next-intl';
+import { setRequestLocale } from 'next-intl/server';
 
-export default function LandingPage() {
+export default function LandingPage({
+  params: { locale },
+}: {
+  params: { locale: string };
+}): ReactElement {
+  setRequestLocale(locale);
   const t = useTranslations();
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-start justify-center px-6 py-16">

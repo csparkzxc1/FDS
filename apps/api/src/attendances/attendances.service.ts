@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { isWithinGeofence } from './geofence.util';
 import type {
@@ -12,6 +13,13 @@ import type {
   AttendanceListQuery,
 } from '@multicheck/shared';
 
+// 2x32-bit keys for pg_advisory_xact_lock(int, int). Deterministic from (orgId, userId).
+function advisoryLockKeys(orgId: string, userId: string): [number, number] {
+  const hash = createHash('sha256').update(`${orgId}:${userId}`).digest();
+  // Postgres int4 range is signed; readInt32BE handles sign correctly.
+  return [hash.readInt32BE(0), hash.readInt32BE(4)];
+}
+
 @Injectable()
 export class AttendancesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -19,30 +27,38 @@ export class AttendancesService {
   async checkIn(userId: string, orgId: string, input: CheckInInput) {
     await this.assertMember(userId, orgId);
 
-    const existingOpen = await this.prisma.attendance.findFirst({
-      where: { organizationId: orgId, userId, status: 'open' },
-    });
-    if (existingOpen) {
-      throw new BadRequestException('Already checked in. Check out first.');
-    }
-
     if (input.method === 'gps') {
       await this.verifyGeofence(orgId, input.lat!, input.lng!, input.locationId);
     }
 
-    return this.prisma.attendance.create({
-      data: {
-        organizationId: orgId,
-        userId,
-        method: input.method,
-        status: 'open',
-        checkInAt: new Date(),
-        locationId: input.locationId,
-        lat: input.lat,
-        lng: input.lng,
-        photoUrl: input.photoUrl,
-        memo: input.memo,
-      },
+    const [k1, k2] = advisoryLockKeys(orgId, userId);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Serialize concurrent check-ins per (org, user). Released at tx end.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${k1}::int, ${k2}::int)`;
+
+      const existingOpen = await tx.attendance.findFirst({
+        where: { organizationId: orgId, userId, status: 'open' },
+        select: { id: true },
+      });
+      if (existingOpen) {
+        throw new BadRequestException('Already checked in. Check out first.');
+      }
+
+      return tx.attendance.create({
+        data: {
+          organizationId: orgId,
+          userId,
+          method: input.method,
+          status: 'open',
+          checkInAt: new Date(),
+          locationId: input.locationId,
+          lat: input.lat,
+          lng: input.lng,
+          photoUrl: input.photoUrl,
+          memo: input.memo,
+        },
+      });
     });
   }
 
