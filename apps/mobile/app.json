@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "MultiCheck",
+    "slug": "multicheck",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "locales": {
+      "ko": "./src/i18n/ko.json",
+      "en": "./src/i18n/en.json"
+    },
+    "ios": {
+      "bundleIdentifier": "com.multicheck.app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "GPS로 출퇴근 체크인을 위해 위치 권한이 필요합니다."
+      }
+    },
+    "android": {
+      "package": "com.multicheck.app",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": ["expo-location"]
+  }
+}

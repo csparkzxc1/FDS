@@ -1,0 +1,27 @@
+{
+  "app": {
+    "title": "MultiCheck",
+    "tagline": "회사·학원·학교 통합 근태/출결 관리"
+  },
+  "nav": {
+    "dashboard": "대시보드",
+    "attendance": "근태",
+    "members": "구성원",
+    "locations": "체크인 거점",
+    "settings": "설정",
+    "signIn": "로그인",
+    "signOut": "로그아웃"
+  },
+  "landing": {
+    "heading": "근태관리, 이제 하나로 충분합니다",
+    "subheading": "회사·학원·학교 — 조직 타입에 맞춰 자동으로 전환되는 근태/출결 SaaS.",
+    "cta": "시작하기"
+  },
+  "auth": {
+    "signIn": "로그인",
+    "signUp": "회원가입",
+    "email": "이메일",
+    "password": "비밀번호",
+    "name": "이름"
+  }
+}

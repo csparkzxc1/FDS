@@ -1,0 +1,17 @@
+{
+  "app": {
+    "title": "MultiCheck"
+  },
+  "check": {
+    "in": "출근",
+    "out": "퇴근",
+    "locating": "위치 확인 중…",
+    "success": "체크인 완료",
+    "outOfRange": "지정 거점 반경을 벗어났습니다."
+  },
+  "auth": {
+    "signIn": "로그인",
+    "email": "이메일",
+    "password": "비밀번호"
+  }
+}

@@ -1,0 +1,355 @@
+// MultiCheck — core schema (Phase 0)
+// Multi-tenant: every tenant-scoped row carries organizationId.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationType {
+  company
+  academy
+  school
+}
+
+enum OrganizationPlan {
+  free
+  starter
+  pro
+  enterprise
+}
+
+enum UserRole {
+  super_admin
+  org_owner
+  admin
+  manager
+  member
+  student
+  parent
+}
+
+enum CheckInMethod {
+  gps
+  wifi
+  beacon
+  qr
+  face
+  nfc
+  manual
+}
+
+enum AttendanceStatus {
+  open
+  closed
+  missed
+  voided
+}
+
+enum LeaveType {
+  annual
+  half_day_am
+  half_day_pm
+  sick
+  bereavement
+  maternity
+  paternity
+  unpaid
+  other
+}
+
+enum LeaveStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+enum InviteStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
+// -----------------------------------------------------------------------------
+// Organization
+// -----------------------------------------------------------------------------
+
+model Organization {
+  id        String            @id @default(uuid())
+  name      String
+  type      OrganizationType
+  plan      OrganizationPlan  @default(free)
+  timezone  String            @default("Asia/Seoul")
+  locale    String            @default("ko")
+  settings  Json              @default("{}")
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  memberships    Membership[]
+  locations      Location[]
+  schedules      Schedule[]
+  attendances    Attendance[]
+  leaves         Leave[]
+  leaveBalances  LeaveBalance[]
+  approvals      Approval[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  invites        Invite[]
+
+  @@map("organizations")
+}
+
+// -----------------------------------------------------------------------------
+// User & Membership
+// A User can belong to multiple Organizations via Membership.
+// -----------------------------------------------------------------------------
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  passwordHash   String?
+  name           String
+  phone          String?
+  locale         String   @default("ko")
+  emailVerifiedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  memberships   Membership[]
+  attendances   Attendance[]
+  schedules     Schedule[]
+  leaves        Leave[]
+  leaveBalances LeaveBalance[]
+  approvalsRequested Approval[] @relation("ApprovalRequester")
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Membership {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  role           UserRole @default(member)
+  employeeNumber String?
+  department     String?
+  position       String?
+  joinedAt       DateTime @default(now())
+  leftAt         DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, role])
+  @@map("memberships")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Invite {
+  id             String       @id @default(uuid())
+  organizationId String
+  email          String
+  role           UserRole     @default(member)
+  tokenHash      String       @unique
+  status         InviteStatus @default(pending)
+  invitedById    String?
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([email])
+  @@map("invites")
+}
+
+// -----------------------------------------------------------------------------
+// Attendance core
+// -----------------------------------------------------------------------------
+
+model Location {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  lat            Float
+  lng            Float
+  radiusMeters   Int      @default(100)
+  wifiSsid       String?
+  beaconUuid     String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("locations")
+}
+
+model Schedule {
+  id             String    @id @default(uuid())
+  organizationId String
+  userId         String
+  startAt        DateTime
+  endAt          DateTime
+  type           String    @default("regular")
+  recurrenceRule String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendances  Attendance[]
+
+  @@index([organizationId, userId, startAt])
+  @@map("schedules")
+}
+
+model Attendance {
+  id             String           @id @default(uuid())
+  organizationId String
+  userId         String
+  scheduleId     String?
+  checkInAt      DateTime
+  checkOutAt     DateTime?
+  method         CheckInMethod
+  status         AttendanceStatus @default(open)
+  locationId     String?
+  lat            Float?
+  lng            Float?
+  photoUrl       String?
+  memo           String?
+  isLate         Boolean          @default(false)
+  isEarlyLeave   Boolean          @default(false)
+  workMinutes    Int?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedule     Schedule?    @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, userId, checkInAt])
+  @@index([organizationId, status])
+  @@map("attendances")
+}
+
+// -----------------------------------------------------------------------------
+// Leave & Approvals
+// -----------------------------------------------------------------------------
+
+model Leave {
+  id             String      @id @default(uuid())
+  organizationId String
+  userId         String
+  type           LeaveType
+  startDate      DateTime    @db.Date
+  endDate        DateTime    @db.Date
+  reason         String?
+  status         LeaveStatus @default(pending)
+  approverId     String?
+  approvedAt     DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, startDate])
+  @@map("leaves")
+}
+
+model LeaveBalance {
+  id             String @id @default(uuid())
+  organizationId String
+  userId         String
+  year           Int
+  totalDays      Float  @default(0)
+  usedDays       Float  @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, year])
+  @@map("leave_balances")
+}
+
+model Approval {
+  id             String      @id @default(uuid())
+  organizationId String
+  type           String
+  requesterId    String
+  payload        Json
+  status         LeaveStatus @default(pending)
+  steps          Json        @default("[]")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requester    User         @relation("ApprovalRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("approvals")
+}
+
+// -----------------------------------------------------------------------------
+// Notifications & Audit
+// -----------------------------------------------------------------------------
+
+model Notification {
+  id             String    @id @default(uuid())
+  organizationId String
+  userId         String
+  channel        String    @default("push")
+  title          String
+  body           String
+  readAt         DateTime?
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, readAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  actorId        String?
+  entity         String
+  entityId       String
+  action         String
+  before         Json?
+  after          Json?
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, entity, entityId])
+  @@map("audit_logs")
+}

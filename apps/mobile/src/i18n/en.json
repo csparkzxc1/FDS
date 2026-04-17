@@ -1,0 +1,17 @@
+{
+  "app": {
+    "title": "MultiCheck"
+  },
+  "check": {
+    "in": "Check in",
+    "out": "Check out",
+    "locating": "Locating…",
+    "success": "Checked in",
+    "outOfRange": "Outside the allowed geofence."
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "email": "Email",
+    "password": "Password"
+  }
+}

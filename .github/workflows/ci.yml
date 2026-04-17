@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: multicheck
+          POSTGRES_PASSWORD: multicheck
+          POSTGRES_DB: multicheck
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U multicheck"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://multicheck:multicheck@localhost:5432/multicheck?schema=public
+      JWT_SECRET: ci-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Generate Prisma client
+        run: pnpm --filter @multicheck/api db:generate
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (shared + api unit tests)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

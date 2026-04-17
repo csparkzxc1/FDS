@@ -1,39 +1,83 @@
-###### Front-End Develop SCHOOL
+# MultiCheck
 
-# 프론트엔드 개발 SCHOOL
+회사·학원·학교 통합 근태/출결 관리 SaaS. 조직 타입(`company` / `academy` / `school`)에 따라 근태·출결 로직이 자동으로 전환되는 멀티테넌트 앱.
+
+> MVP 타겟: **회사(Company)**. 학원/학교 모듈은 Phase 3~4에서 추가.
+
+## 📦 모노레포 구조
+
+```
+apps/
+├── api/        NestJS + Prisma (PostgreSQL) 백엔드
+├── web/        Next.js 14 App Router 관리자 대시보드 (ko/en)
+└── mobile/     Expo (React Native) 직원용 모바일 앱 (ko/en)
+
+packages/
+└── shared/     Zod 스키마 + 공유 TypeScript 타입
+```
+
+## 🚀 빠른 시작
+
+### 요구사항
+
+- Node.js 20+
+- pnpm 9+
+- Docker (Postgres + Redis)
+
+### 설치 & 실행
+
+```bash
+# 1. 의존성 설치
+pnpm install
+
+# 2. 환경변수 복사
+cp .env.example .env
+
+# 3. 인프라 기동 (Postgres + Redis)
+pnpm docker:up
+
+# 4. DB 마이그레이션 + 클라이언트 생성
+pnpm db:migrate
+
+# 5. 개발 서버 실행
+pnpm dev:api      # http://localhost:3001
+pnpm dev:web      # http://localhost:3000
+pnpm dev:mobile   # Expo DevTools
+```
+
+## 🧱 기술 스택
+
+| 레이어 | 기술 |
+|--------|------|
+| Backend | Node 20, NestJS, Prisma, PostgreSQL 15, Redis, BullMQ |
+| Web | Next.js 14 (App Router), Tailwind CSS, shadcn/ui, next-intl |
+| Mobile | Expo, React Native, i18n-js, React Query |
+| 공유 | TypeScript, Zod |
+| 인프라 | Docker Compose (local), GitHub Actions CI |
+
+## 🗺 로드맵
+
+- **Phase 0** — 모노레포 셋업, Prisma 스키마, 기본 인증 ← *현재*
+- **Phase 1** — 회사 MVP (GPS/QR 체크인, 스케줄, 대시보드)
+- **Phase 2** — 휴가/결재, 감사 로그
+- **Phase 3** — 학원 모듈 (수강생 출결, 학부모 알림)
+- **Phase 4** — 학교 모듈 (교직원 복무, 학생 출결)
+- **Phase 5** — AI 이상탐지, 얼굴인식, 급여 연동
+
+## 📏 개발 규칙
+
+- 타입 안정성: 모든 API는 Zod로 검증, 타입은 `packages/shared` 공유.
+- i18n: 한국어/영어 키 분리 — 하드코딩 금지.
+- 보안: 비밀번호 bcrypt, 얼굴 임베딩만 저장(원본 미저장 옵션), 민감정보 로그 금지.
+- 커밋: Conventional Commits (`feat:`, `fix:`, `chore:` 등).
+
+---
+
+<details>
+<summary>이전 리포 콘텐츠 (프론트엔드 개발 SCHOOL 2기)</summary>
 
 ![open-img](ASSETS/open-img.png)
 
-### INTRODUCE
+3개월의 프론트엔드 개발 SCHOOL 과정 수료생 프로젝트 자료. ASSETS 폴더 참고.
 
-3개월의 프론트엔드 개발 SCHOOL 과정을 통해 현업 2년차 수준의 프론트엔드 개발자가 될 수 있습니다.
-
-#### 2기 수료생의 팀 프로젝트 결과물
-
-> ##### 영화 평점 사이트 FINGO
-
-> 웹 프로그래밍 스쿨 수강생들과의 팀 프로젝트로 제작한 서비스로 API 서버를 이용해 데이터를 가져오고, 저장할 수 있음. 반응형 웹 디자인을 적용한 SPA(Single Page Application) 구현. (AngularJS를 사용해 라우팅과 API 통신 처리)
-
-> <img src="ASSETS/fingo-1.gif" alt="" width="500" height="240">
-
-
-
-> ##### 영화정보 제공 및 평점 사이트 POPCORN
-
-> 반응형 웹 디자인 적용, Angular JS를 이용해 백엔드에서 구현한 API에 접속, 데이터를 받아 화면에 구현. 사용자 피드백은 서버에 전달. Gulp, Webpack 으로 작업파일 모듈화.
-
-> <img src="ASSETS/popcorn.gif" alt="" width="500" height="273">
-
--
-
-### OUR GOAL
-
-프론트엔드 개발 SCHOOL은 HTML, CSS, 자바스크립트의 기본부터 제대로 알려드립니다. 기초가 쌓이지 않으면 라이브러리와 프레임워크를 배운들 스스로 활용할 수 없기 때문입니다. 따라서 작동 원리부터 차근차근 이해하고 경험하는 과정을 통해, 급격히 발전하는 웹개발 분야에 대응할 수 있도록 돕습니다. 이를 바탕으로 협업 역량까지 쌓아 실무형 인재로 거듭납니다.
-
--
-
-### OUR CURRICULUM
-
-수박겉핥기식 교육이 아닌, 실습 중심의 회화식 교육을 추구합니다. 다양한 과제와 프로젝트를 통해 스스로 고민해보고 강사와 소통하면서 해결 방향을 찾습니다. Code Review, Refactoring, Code Battle 등과 같은 Team Activity를 통해, 협업 경험은 물론이고 현장에서의 문제 해결력과 좋은 코드를 보는 안목을 길러 나갑니다.
-
-
+</details>

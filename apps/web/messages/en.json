@@ -1,0 +1,27 @@
+{
+  "app": {
+    "title": "MultiCheck",
+    "tagline": "Unified attendance management for companies, academies, and schools"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "attendance": "Attendance",
+    "members": "Members",
+    "locations": "Check-in locations",
+    "settings": "Settings",
+    "signIn": "Sign in",
+    "signOut": "Sign out"
+  },
+  "landing": {
+    "heading": "One app for every kind of attendance",
+    "subheading": "Companies, academies, schools — logic switches automatically by organization type.",
+    "cta": "Get started"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name"
+  }
+}

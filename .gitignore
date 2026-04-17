@@ -1,73 +1,73 @@
-###사용자 정의###
-__*
-reference.md
-
-###OSX###
-
+# OS
 .DS_Store
 .AppleDouble
 .LSOverride
-
-# Icon must end with two \r
 Icon
-
-
-# Thumbnails
 ._*
-
-# Files that might appear on external disk
 .Spotlight-V100
 .Trashes
-
-# Directories potentially created on remote AFP share
 .AppleDB
 .AppleDesktop
 Network Trash Folder
 Temporary Items
 .apdisk
-
-
-###Windows###
-
-# Windows image file caches
 Thumbs.db
 ehthumbs.db
-
-# Folder config file
 Desktop.ini
-
-# Recycle Bin used on file shares
 $RECYCLE.BIN/
-
-# Windows Installer files
 *.cab
 *.msi
 *.msm
 *.msp
-
-# Windows shortcuts
 *.lnk
 
-
-###SASS###
-
-.sass-cache
-*.css.map
-
-
-###SublimeText###
-
-# cache files for sublime text
+# Editors
+.idea/
+.vscode/
+*.sublime-workspace
 *.tmlanguage.cache
 *.tmPreferences.cache
 *.stTheme.cache
-
-# workspace files are user-specific
-*.sublime-workspace
-
-# project files should be checked into the repository, unless a significant
-# proportion of contributors will probably not be using SublimeText
-# *.sublime-project
-
-# sftp configuration file
 sftp-config.json
+
+# SASS
+.sass-cache
+*.css.map
+
+# Node / pnpm
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+out/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Prisma
+apps/api/prisma/migrations/dev.db*
+
+# Expo
+.expo/
+.expo-shared/
+apps/mobile/web-build/
+
+# Logs
+logs/
+*.log
+
+# User-defined (legacy)
+__*
+reference.md
