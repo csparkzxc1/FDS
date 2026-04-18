@@ -13,6 +13,8 @@ export default function OnboardingLayout() {
       <Stack.Screen name="welcome" />
       <Stack.Screen name="household-choice" />
       <Stack.Screen name="create-household" />
+      <Stack.Screen name="join-household" />
+      <Stack.Screen name="pending-approval" />
       <Stack.Screen name="setup-chores" />
     </Stack>
   );

@@ -5,6 +5,7 @@ export default function ModalsLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="chore-detail" options={{ presentation: 'modal' }} />
       <Stack.Screen name="approval-queue" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="member-approval" options={{ presentation: 'modal' }} />
       <Stack.Screen name="add-chore" options={{ presentation: 'modal' }} />
       <Stack.Screen name="settle-allowance" options={{ presentation: 'modal' }} />
       <Stack.Screen name="reward-goal" options={{ presentation: 'modal' }} />
